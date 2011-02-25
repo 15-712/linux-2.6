@@ -10,6 +10,7 @@
 
 #include <linux/module.h>
 #include <linux/fs.h>
+#include <linux/mm.h>
 #include <linux/pagemap.h>
 #include <linux/highmem.h>
 #include <linux/time.h>
@@ -36,7 +37,8 @@ static const struct inode_operations tagfs_file_inode_operations = {
 static struct address_space_operations tagfs_aops = {
 	.readpage	= simple_readpage,
 	.write_begin	= simple_write_begin,
-	.set_page_dirty	= __set_page_dirty_no_writeback,
+	.write_end	= simple_write_end,
+	.set_page_dirty = __set_page_dirty_no_writeback,
 };
 
 static const struct file_operations tagfs_file_operations = {
