@@ -26,10 +26,17 @@
 #define TAGFS_DEFAULT_MODE	0755
 
 static const struct super_operations tagfs_ops;
+static const struct inode_operations tagfs_dir_inode_operations;
 
 static const struct inode_operations tagfs_file_inode_operations = {
 	.setattr	= simple_setattr,
 	.getattr	= simple_getattr,
+};
+
+static struct address_space_operations tagfs_aops = {
+	.readpage	= simple_readpage,
+	.write_begin	= simple_write_begin,
+	.set_page_dirty	= __set_page_dirty_no_writeback,
 };
 
 static const struct file_operations tagfs_file_operations = {
@@ -52,17 +59,6 @@ static struct backing_dev_info tagfs_backing_dev_info = {
 				BDI_CAP_READ_MAP | BDI_CAP_WRITE_MAP | BDI_CAP_EXEC_MAP,
 };
 
-static const struct inode_operations tagfs_dir_inode_operations = {
-	.create 	= tagfs_create,
-	.lookup 	= simple_lookup,
-	.link		= simple_link,
-	.unlink 	= simple_unlink,
-	.symlink	= tagfs_symlink,
-	.mkdir		= tagfs_mkdir,
-	.rmdir		= simple_rmdir,
-	.mknod		= tagfs_mknod,
-	.rename		= simple.rename,
-};
 
 struct inode *tagfs_create_inode(struct super_block *sb,
 					const struct inode *dir, int mode, dev_t dev)
@@ -72,7 +68,7 @@ struct inode *tagfs_create_inode(struct super_block *sb,
 	if (inode) {
 		inode->i_ino = get_next_ino();
 		inode_init_owner(inode, dir, mode);
-		inode->i_mapping->a_ops = &tagfs_ops;
+		inode->i_mapping->a_ops = &tagfs_aops;
 		inode->i_mapping->backing_dev_info = &tagfs_backing_dev_info;
 		mapping_set_gfp_mask(inode->i_mapping, GFP_HIGHUSER);
 		mapping_set_unevictable(inode->i_mapping);
@@ -87,7 +83,7 @@ struct inode *tagfs_create_inode(struct super_block *sb,
 			break;
 		case S_IFDIR:
 			inode->i_op = &tagfs_dir_inode_operations;
-			inode->i_fop = &tagfs_dir_operations;
+			inode->i_fop = &simple_dir_operations;
 			inc_nlink(inode);
 			break;
 		case S_IFLNK:
@@ -131,8 +127,20 @@ static int tagfs_symlink(struct inode *dir, struct dentry *dentry, const char * 
 }
 
 
+static const struct inode_operations tagfs_dir_inode_operations = {
+	.create 	= tagfs_create,
+	.lookup 	= simple_lookup,
+	.link		= simple_link,
+	.unlink 	= simple_unlink,
+	.symlink	= tagfs_symlink,
+	.mkdir		= tagfs_mkdir,
+	.rmdir		= simple_rmdir,
+	.mknod		= tagfs_mknod,
+	.rename		= simple_rename,
+};
+
 static const struct super_operations tagfs_ops = {
-	.stafs		= simple_statfs,
+	.statfs		= simple_statfs,
 	.drop_inode	= generic_delete_inode,
 	.show_options	= generic_show_options,
 };
@@ -189,7 +197,7 @@ int tagfs_fill_super(struct super_block *sb, void *data, int silent)
 
 	save_mount_options(sb, data);
 
-	fsi = kzalloc(sizeof(struct ramfs_fs_info), GFP_KERNEL);
+	fsi = kzalloc(sizeof(struct tagfs_fs_info), GFP_KERNEL);
 	sb->s_fs_info = fsi;
 	if(!fsi) {
 		err = -ENOMEM;
@@ -208,7 +216,7 @@ int tagfs_fill_super(struct super_block *sb, void *data, int silent)
 	sb->s_time_gran		= 1;
 
 	inode = tagfs_create_inode(sb, NULL, S_IFDIR | fsi->mount_opts.mode, 0);
-	if (!node) {
+	if (!inode) {
 		err = -ENOMEM;
 		goto fail;
 	}
@@ -228,16 +236,17 @@ fail:
 	return err;
 }
 
-static dentry *tagfs_mount(struct file_system_type *fs_type,
-	int flags, const char *dev_name, void *data)
-{
-	return mount_nodev(fs_type, flags, data, tagfs_fill_super);
-}
 
 static void tagfs_kill_sb(struct super_block *sb)
 {
 	kfree(sb->s_fs_info);
 	kill_litter_super(sb);
+}
+
+static struct dentry *tagfs_mount(struct file_system_type *fs_type,
+	int flags, const char *dev_name, void *data)
+{
+	return mount_nodev(fs_type, flags, data, tagfs_fill_super);
 }
 
 static struct file_system_type tagfs_fs_type = {
