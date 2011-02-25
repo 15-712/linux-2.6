@@ -44,12 +44,24 @@ static const struct file_operations tagfs_file_operations = {
 	.llseek		= generic_file_llseek,
 };
 
-static struct backing_dev_info ramfs_backing_dev_info = {
+static struct backing_dev_info tagfs_backing_dev_info = {
 	.name		= "tagfs",
 	.ra_pages	= 0, /* No readahead */
 	.capabilities	= BDI_CAP_NO_ACCT_AND_WRITEBACK | 
 				BDI_CAP_MAP_DIRECT | BDI_CAP_MAP_COPY |
 				BDI_CAP_READ_MAP | BDI_CAP_WRITE_MAP | BDI_CAP_EXEC_MAP,
+};
+
+static const struct inode_operations tagfs_dir_inode_operations = {
+	.create 	= tagfs_create,
+	.lookup 	= simple_lookup,
+	.link		= simple_link,
+	.unlink 	= simple_unlink,
+	.symlink	= tagfs_symlink,
+	.mkdir		= tagfs_mkdir,
+	.rmdir		= simple_rmdir,
+	.mknod		= tagfs_mknod,
+	.rename		= simple.rename,
 };
 
 struct inode *tagfs_create_inode(struct super_block *sb,
@@ -60,7 +72,7 @@ struct inode *tagfs_create_inode(struct super_block *sb,
 	if (inode) {
 		inode->i_ino = get_next_ino();
 		inode_init_owner(inode, dir, mode);
-		inode->i_mapping->a_ops = &tagfs_aops;
+		inode->i_mapping->a_ops = &tagfs_ops;
 		inode->i_mapping->backing_dev_info = &tagfs_backing_dev_info;
 		mapping_set_gfp_mask(inode->i_mapping, GFP_HIGHUSER);
 		mapping_set_unevictable(inode->i_mapping);
@@ -118,17 +130,6 @@ static int tagfs_symlink(struct inode *dir, struct dentry *dentry, const char * 
 	return -ENOSYS;
 }
 
-static const struct inode_operations tagfs_dir_inode_operations = {
-	.create 	= tagfs_create,
-	.lookup 	= simple_lookup,
-	.link		= simple_link,
-	.unlink 	= simple_unlink,
-	.symlink	= tagfs_symlink,
-	.mkdir		= tagfs_mkdir,
-	.rmdir		= simple_rmdir,
-	.mknod		= tagfs_mknod,
-	.rename		= simple.rename,
-};
 
 static const struct super_operations tagfs_ops = {
 	.stafs		= simple_statfs,
