@@ -26,6 +26,8 @@
 
 #define TAGFS_DEFAULT_MODE	0755
 
+static int tagfs_set_page_dirty(struct page *page);
+
 static const struct super_operations tagfs_ops;
 static const struct inode_operations tagfs_dir_inode_operations;
 
@@ -38,7 +40,7 @@ static struct address_space_operations tagfs_aops = {
 	.readpage	= simple_readpage,
 	.write_begin	= simple_write_begin,
 	.write_end	= simple_write_end,
-	.set_page_dirty = __set_page_dirty_no_writeback,
+	.set_page_dirty = tagfs_set_page_dirty,
 };
 
 static const struct file_operations tagfs_file_operations = {
@@ -61,6 +63,12 @@ static struct backing_dev_info tagfs_backing_dev_info = {
 				BDI_CAP_READ_MAP | BDI_CAP_WRITE_MAP | BDI_CAP_EXEC_MAP,
 };
 
+static int tagfs_set_page_dirty(struct page *page) 
+{
+	if (!PageDirty(page))
+		return !TestSetPageDirty(page);
+	return 0;
+}
 
 struct inode *tagfs_create_inode(struct super_block *sb,
 					const struct inode *dir, int mode, dev_t dev)

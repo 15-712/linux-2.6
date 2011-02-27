@@ -2,7 +2,8 @@
 # Makefile for tagfs
 #
 ifneq (${KERNELRELEASE},)
-obj-m += inode.o
+obj-m += tagfs.o
+tagfs-objs += inode.o
 else
 KERNEL_SOURCE := /lib/modules/$(shell uname -r)/build
 PWD := $(shell pwd)
