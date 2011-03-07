@@ -267,11 +267,13 @@ static struct file_system_type tagfs_fs_type = {
 
 static int __init init_tagfs_fs(void)
 {
+	printk("Loading tagfs kernel module\n");
 	return register_filesystem(&tagfs_fs_type);
 }
 
 static void __exit exit_tagfs_fs(void)
 {
+	printk("Unloading tagfs kernel module\n");
 	unregister_filesystem(&tagfs_fs_type);
 }
 
