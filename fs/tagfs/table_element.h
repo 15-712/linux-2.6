@@ -27,5 +27,6 @@ enum table_element_error {
 	DUPLICATE = -255,
 	NO_MEMORY,
 	INVALID_ELEMENT,
+	READ_ONLY,
 };
 #endif 

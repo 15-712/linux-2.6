@@ -32,6 +32,18 @@ void delete_element(struct table_element *e) {
   }
 }
 
+static int insert_end(struct table_element *e, const struct inode_entry *entry) 
+{
+	if (e->count == e->capacity) {
+		struct inode_entry *new_ptr = krealloc(e->entries, e->capacity << 1, GFP_KERNEL);
+		if (!new_ptr)
+			return NO_MEMORY;
+		e->capacity <<= 1;
+	}
+	memcpy(&e->entries[e->count++], entry, sizeof(struct inode_entry));
+	return 0;
+}
+
 int insert_entry(struct table_element *e, const struct inode_entry *entry) 
 {
 	unsigned int i, index;
@@ -72,7 +84,10 @@ void remove_entry(struct table_element *e, unsigned long ino) {
 
 struct table_element *set_union(struct table_element *e1, struct table_element *e2) {
 	unsigned int i,j;
-	struct table_element *result = new_element();
+	struct table_element *result = NULL;
+	if (e1 == NULL || e2 == NULL)
+		goto fail;
+	result = new_element();
 	if (!result)
 		goto fail;
 	i = j = 0;
@@ -81,32 +96,32 @@ struct table_element *set_union(struct table_element *e1, struct table_element *
 			break;
 		else if (i >= e1->count) {
 			for(; j < e2->count; j++) {
-				if (insert_entry(result, &e2->entries[j]) == NO_MEMORY)
+				if (insert_end(result, &e2->entries[j]) == NO_MEMORY)
 					goto fail;
 			}
 			break;
 		}
 		else if (j >= e2->count) {
 			for(; i < e1->count; i++) {
-				if (insert_entry(result, &e1->entries[i]) == NO_MEMORY)
+				if (insert_end(result, &e1->entries[i]) == NO_MEMORY)
 					goto fail;
 			}
 			break;
 		}
 		else {
 			if (e1->entries[i].ino->i_ino < e2->entries[j].ino->i_ino) {
-				if (insert_entry(result, &e1->entries[i]) == NO_MEMORY)
+				if (insert_end(result, &e1->entries[i]) == NO_MEMORY)
 					goto fail;
 				i++;
 			} 
 			else if (e1->entries[i].ino->i_ino == e2->entries[j].ino->i_ino) {
-				if (insert_entry(result, &e1->entries[i]) == NO_MEMORY)
+				if (insert_end(result, &e1->entries[i]) == NO_MEMORY)
 					goto fail;
 				i++;
 				j++;
 			}
 			else {
-				if (insert_entry(result, &e2->entries[j]) == NO_MEMORY)
+				if (insert_end(result, &e2->entries[j]) == NO_MEMORY)
 					goto fail;
 				j++;
 			}
@@ -131,7 +146,7 @@ struct table_element *set_intersect(struct table_element *e1, struct table_eleme
 		else if (e1->entries[i].ino->i_ino > e2->entries[j].ino->i_ino)
 			j++;
 		else {
-			if (insert_entry(result, &e2->entries[j]) == NO_MEMORY) {
+			if (insert_end(result, &e2->entries[j]) == NO_MEMORY) {
 				delete_element(result);
 				return NULL;
 			}
