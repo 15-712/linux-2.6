@@ -1,3 +1,15 @@
+/** @file treap.c
+ *  @brief A treap implementation of the table element
+ *
+ *
+ *  Relatively faster approach for table elements, with most
+ *  operations taking logarithmic time.
+ *
+ *  Note: probably not working at the moment
+ *
+ */
+
+
 #include "table_element.h"
 #include "treap.h"
 #include <linux/slab.h>
@@ -21,6 +33,7 @@ struct table_element *new_element() {
 	return e;
 }
 
+/* Frees all the memory associated with the treap */
 static void delete_tree(struct treap_node *root) {
 	if (!root)
 		return;
@@ -29,6 +42,7 @@ static void delete_tree(struct treap_node *root) {
 	kfree(root);
 }
 
+/* Deep copies the tree */
 struct treap_node *copy_tree(struct treap_node *root, int *status) {
 	struct treap_node *copy, *left, *right;
 	if (!root)
@@ -61,6 +75,7 @@ void delete_element(struct table_element *e) {
 	kfree(e);
 }
 
+/* Does an inorder traversal of the treap to get a sorted array of the inodes */
 static void tree_to_array(struct inode_entry *entries, struct treap_node *root, unsigned int *index) {
 	if (!root)
 		return;
@@ -91,6 +106,7 @@ int insert_entry(struct table_element *e, const struct inode_entry *entry){
 	memcpy(&n->entry, entry, sizeof(struct inode_entry));
 	prev = NULL;
 	curr = &e->root;
+	/* Normal binary tree insertion */
 	while(*curr) {
 		if ((*curr)->entry.ino->i_ino == entry->ino->i_ino)
 			return DUPLICATE;
@@ -102,6 +118,7 @@ int insert_entry(struct table_element *e, const struct inode_entry *entry){
 	}
 	n->pointers[PARENT] = prev;
 	*curr = n;
+	/* Maintain heap ordering */
 	while(n->pointers[PARENT] && n->pointers[PARENT]->prio > n->prio) {
 		struct treap_node *parent = n->pointers[PARENT];
 		if (n->entry.ino->i_ino < parent->entry.ino->i_ino) {
@@ -123,12 +140,14 @@ int insert_entry(struct table_element *e, const struct inode_entry *entry){
 
 void remove_entry(struct table_element *e, unsigned long ino) {
 	struct treap_node *curr = e->root;
+	/* Find the entry */
 	while(curr) {
 		if (curr->entry.ino->i_ino < ino)
 			curr = curr->pointers[RIGHT];
 		else if (curr->entry.ino->i_ino > ino)
 			curr = curr->pointers[LEFT];
 		else {
+			/* Rotate entry down to leaf while maintaining heap order */
 			while(curr->pointers[LEFT] || curr->pointers[RIGHT]) {
 				struct treap_node *left = curr->pointers[LEFT];
 				struct treap_node *right = curr->pointers[RIGHT];
@@ -160,6 +179,7 @@ void remove_entry(struct table_element *e, unsigned long ino) {
 	}
 }
 
+/* Performs a join operation on two treaps and returns a deep copy of the joined treap */
 static struct treap_node *join (struct treap_node *r1, struct treap_node *r2, int *status) {
 	struct treap_node *root;
 	if (!r1) 
@@ -197,6 +217,7 @@ fail:
 	return NULL;
 }
 
+/* Performs a split operation on a treap with ino as the split point, returns deep copied versions of the two treaps of resulting split */
 static struct treap_node *split(struct treap_node **less, struct treap_node **gtr, struct treap_node *r, unsigned long ino, int *status) {
 	struct treap_node *root, *ret;
 	if (r == NULL) {
@@ -238,6 +259,7 @@ fail:
 	return NULL;
 }
 
+/* Performs a union operation on the treap and returns a deep copy of the resulting treap*/
 static struct treap_node *treap_union(struct treap_node *r1, struct treap_node *r2, int *status) {
 	struct treap_node *root = NULL, *less = NULL, *gtr = NULL, *duplicate = NULL;
 	if (r1 == NULL)
@@ -277,6 +299,7 @@ fail:
 	return NULL;
 }
 
+/* Performs an intersection operation on two treaps and returns a deep copy of the resulting treap */
 static struct treap_node *treap_intersect(struct treap_node *r1, struct treap_node *r2, int *status) {
 	struct treap_node *root = NULL, *less = NULL, *gtr = NULL, *left = NULL, *right = NULL, *duplicate = NULL;
 	if (r1 == NULL)
@@ -320,6 +343,7 @@ fail:
 	return NULL;
 }
 
+/* Counts the number of nodes in the treap */
 static unsigned int count(struct treap_node *root) {
 	if (!root)
 		return 0;

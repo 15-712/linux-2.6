@@ -1,3 +1,14 @@
+/** @file sarray.c
+ *  @brief Sorted array implementation of the table element
+ *  @author William Wang
+ *  @author Tim Shields
+ *  @author Ping-Yao Tseng
+ *
+ *  A more efficient array based implementation of the table element.
+ *  Same running time as the unsorted implementation for certain
+ *  operations.  More efficient union and set operations can be performed.
+ */
+
 #include "table_element.h"
 #include <linux/slab.h>
 #include <linux/string.h>
@@ -32,6 +43,11 @@ void delete_element(struct table_element *e) {
   }
 }
 
+/** @brief inserts to the end of the array
+ *
+ *  Is a helper function for the union and intersect operations, which do
+ *  not require the insertion sort.
+ */
 static int insert_end(struct table_element *e, const struct inode_entry *entry) 
 {
 	if (e->count == e->capacity) {
@@ -91,6 +107,7 @@ struct table_element *set_union(struct table_element *e1, struct table_element *
 	if (!result)
 		goto fail;
 	i = j = 0;
+	/* Essentially does a merge while removing duplicates */
 	while(1) {
 		if (i >= e1->count && j >= e2->count)
 			break;
@@ -140,6 +157,7 @@ struct table_element *set_intersect(struct table_element *e1, struct table_eleme
 	if (!result)
 		return result;
 	i = j = 0;
+	/* Essentially does a merge which only counts duplicates */
 	while(i < e1->count && j < e2->count) {
 		if (e1->entries[i].ino->i_ino < e2->entries[j].ino->i_ino)
 			i++;

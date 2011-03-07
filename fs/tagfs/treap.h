@@ -1,6 +1,7 @@
 #ifndef _TREAP_H
 #define _TREAP_H
 
+/* Describes the pointers in a treap node */
 enum treap_pointers {
 	PARENT = 0,
 	LEFT,
@@ -8,6 +9,7 @@ enum treap_pointers {
 	TYPE_COUNT
 };
 
+/* The treap node structure used in the treap implementation */
 struct treap_node {
 	unsigned long long prio;
 	struct inode_entry entry;

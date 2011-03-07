@@ -1,3 +1,15 @@
+/** @file array.c
+ *  @brief Unsorted array implementation of the table element
+ *  @author William Wang
+ *  @author Tim Shields
+ *  @author Ping-Yao Tseng
+ *
+ *  This is the basic unsorted array implementation of the table element
+ *  All operations essentially require linear time to run and is probably
+ *  really slow.
+ */
+
+
 #include "table_element.h"
 #include <linux/slab.h>
 #include <linux/string.h>
@@ -37,12 +49,14 @@ int insert_entry(struct table_element *e, const struct inode_entry *entry)
 	unsigned int i;
 	if (!e)
 		return INVALID_ELEMENT;
+        /* If full, double the size of the array */
 	if (e->count == e->capacity) {
 		struct inode_entry *new_ptr = krealloc(e->entries, e->capacity << 1, GFP_KERNEL);
 		if (!new_ptr)
 			return NO_MEMORY;
 		e->capacity <<= 1;
 	}
+	/* Check for duplicate entries */
 	for (i = 0 ; i < e->count ; i++) {
 		if (entry->ino->i_ino == e->entries[i].ino->i_ino)
 			return DUPLICATE;
