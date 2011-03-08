@@ -4,9 +4,9 @@
  *  @author Tim Shields
  *  @author Ping-Yao Tseng
  *
- *  A more efficient array based implementation of the table element.
+ *  A sorted array based implementation of the table element.
  *  Same running time as the unsorted implementation for certain
- *  operations.  More efficient union and set operations can be performed.
+ *  operations but more efficient set operations can be performed.
  */
 
 #include "table_element.h"
