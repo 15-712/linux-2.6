@@ -14,7 +14,7 @@
 #include <linux/slab.h>
 #include <linux/string.h>
 
-static const unsigned int StartCapacity = 10;
+static const unsigned int StartCapacity = 16;
 
 struct table_element {
 	struct inode_entry *entries;
