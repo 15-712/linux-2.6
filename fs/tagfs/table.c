@@ -62,18 +62,17 @@ static inline unsigned long hash_tag(const char *name)
 struct tag_name_id *create_new_id_lookup(struct tag_name_id *head, const char *tag)
 {
 	struct tag_name_id *t; 
-	t = NULL;
+	t = kmalloc(sizeof(struct tag_name_id), GFP_KERNEL);
+	if (!t)
+		return t;
 	if(head == NULL) {
-		t = kmalloc(sizeof(struct tag_name_id), GFP_KERNEL);
 		strlcpy(t->tag, tag, MAX_TAG_LEN);
 		t->id = 1;
 	} else if(head->next == NULL) {
-		t = kmalloc(sizeof(struct tag_name_id), GFP_KERNEL);
 		strlcpy(t->tag, tag, MAX_TAG_LEN);
 		t->id = head->id+1;
 		head->next = t;
 	} else if(head->next->id > head->id+1) {
-		t = kmalloc(sizeof(struct tag_name_id), GFP_KERNEL);
 		strlcpy(t->tag, tag, MAX_TAG_LEN);
 		t->id = head->id+1;
 		t->next = head->next;
@@ -143,7 +142,6 @@ int insert(struct tag_node **head, const char *tag, const struct inode_entry *i)
 		/* TODO: Add tag id */
 		if((e = add_node(head, node)) < 0) {
 			delete_element(node->e);
-			kfree(node->tag);
 			kfree(node);
 			return e;
 		}
