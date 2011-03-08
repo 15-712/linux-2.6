@@ -5,7 +5,7 @@
  *  Relatively faster approach for table elements, with most
  *  operations taking logarithmic time.
  *
- *  Note: probably not working at the moment
+ *  Note: probably not working at the moment, don't use
  *
  */
 
