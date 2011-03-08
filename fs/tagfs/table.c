@@ -1,10 +1,13 @@
 /** @file table.c
-*   @brief Hash table for the tags. 
-*   
-*   Tag lookup table implementation. Each bucket contains a list of inodes
-*   stored in a table_element data structure.
-*
-*/
+ *  @brief Hash table for the tags. 
+ *  @author William Wang
+ *  @author Tim Shields
+ *  @author Ping-Yao Tseng
+ *   
+ *  Tag lookup table implementation. Each bucket contains a list of inodes
+ *  stored in a table_element data structure.
+ *
+ */
 
 #include "table_element.h"
 #include <linux/hash.h>
@@ -13,6 +16,8 @@
 #define MAX_TAG_LEN	255
 #define NUM_HASH_BITS	12
 
+/* Struct for the buckets of the hash table.
+ * collisions handled by linked list */
 struct tag_node {
 	char tag[MAX_TAG_LEN];
 	struct table_element *e;
@@ -20,6 +25,7 @@ struct tag_node {
 	struct tag_node *next;
 };
 
+/* Linked list that allows tags to be looked up by id */
 struct tag_name_id {
 	int id;
 	char tag[MAX_TAG_LEN];
@@ -31,6 +37,7 @@ enum tag_node_error {
 };
 
 /* 
+*  Function used to hash tags
 *  String hashing function taken from linux/sunrpc/avcauth.h
 */
 static inline unsigned long hash_tag(const char *name)
@@ -51,7 +58,8 @@ static inline unsigned long hash_tag(const char *name)
 	return hash >> (BITS_PER_LONG - NUM_HASH_BITS);
 }
 
-struct tag_name_id *create_new_lookup(struct tag_name_id *head, const char *tag)
+/* Assigns and ID to a tag and creates a new entry in the lookup table */
+struct tag_name_id *create_new_id_lookup(struct tag_name_id *head, const char *tag)
 {
 	struct tag_name_id *t; 
 	t = NULL;
@@ -74,6 +82,8 @@ struct tag_name_id *create_new_lookup(struct tag_name_id *head, const char *tag)
 	return t;
 }
 
+/* Searches the hash table for a node with a given tag 
+ * Returns NULL if entry does not exist. */
 struct tag_node *find_node(struct tag_node **head, const char *tag) 
 {
 	struct tag_node *node;
@@ -86,6 +96,7 @@ struct tag_node *find_node(struct tag_node **head, const char *tag)
 	return node;
 }
 
+/* Adds a node to the hash table. */
 int add_node(struct tag_node **head, struct tag_node *new_node) 
 {
 	struct tag_node *node;
@@ -104,6 +115,7 @@ int add_node(struct tag_node **head, struct tag_node *new_node)
 	
 }
 
+/* Removes an inode from the specified tag. This is not fully implemented. */
 void remove(struct tag_node **head, const char *tag, unsigned long inode_num) {
 	struct tag_node *node;
 	node = find_node(head, tag);
@@ -114,6 +126,7 @@ void remove(struct tag_node **head, const char *tag, unsigned long inode_num) {
 	}
 }
 
+/* Inserts an inode in the given tag entry. Creates tag if necessary. */
 int insert(struct tag_node **head, const char *tag, const struct inode_entry *i)
 {
 	struct tag_node *node;
@@ -140,6 +153,7 @@ int insert(struct tag_node **head, const char *tag, const struct inode_entry *i)
 	return 0;
 }
 
+/* Returns the table_element structure of inodes associated with the specified tag.  */
 struct table_element * get_inodes(struct tag_node **head, char* tag) 
 {
 	struct tag_node *n = find_node(head, tag);
@@ -148,6 +162,7 @@ struct table_element * get_inodes(struct tag_node **head, char* tag)
 	return n->e;
 }
 
+/* Creates the hash table */
 struct tag_node * create_table(void)
 {
 	struct tag_node *head;
