@@ -6,7 +6,7 @@
  *
  *  This is the basic unsorted array implementation of the table element
  *  All operations essentially require linear time to run and is probably
- *  really slow.
+ *  really slow. Baseline for performance tests
  */
 
 
