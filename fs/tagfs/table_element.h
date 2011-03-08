@@ -3,7 +3,7 @@
  *
  *  Used by the hash table to store inodes efficiently such
  *  that one can perform set operations in order to find files
- *  based on tags
+ *  based on tags.
  * 
  */
 
