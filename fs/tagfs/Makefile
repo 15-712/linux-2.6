@@ -3,7 +3,7 @@
 #
 ifneq (${KERNELRELEASE},)
 obj-m += tagfs.o
-tagfs-objs += inode.o sarray.o table.o
+tagfs-objs += inode.o array.o table.o
 else
 KERNEL_SOURCE := /lib/modules/$(shell uname -r)/build
 PWD := $(shell pwd)
