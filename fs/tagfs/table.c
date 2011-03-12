@@ -40,7 +40,6 @@ struct tag_name_id {
 
 enum tag_node_error {
 	INVALID_NODE = -255,
-	TABLE_ELEMENT_ERROR,
 };
 
 /* 
@@ -128,7 +127,6 @@ void remove(struct hash_table *table, const char *tag, unsigned long inode_num) 
 	if(node) {
 		remove_entry(node->e, inode_num);
 		if(size(node->e) == 0) {
-			delete_element(node->e);
 			kfree(node);
 			table->num_tags--;
 		}
@@ -145,32 +143,22 @@ int insert(struct hash_table *table, const char *tag, const struct inode_entry *
 	if(!node) {
 		/* Create empty table element */
 		node = kmalloc(sizeof(struct tag_node), GFP_KERNEL);
-		if(!node) {
-			e = -ENOMEM;
-			goto fail;
-		}
+		if(!node)
+			return -ENOMEM;
 		node->next = NULL;
 		node->e = new_element();
-		if (!node->e) {
-			e = -ENOMEM;
-			goto fail;
-		}
 		strlcpy(node->tag, tag, MAX_TAG_LEN);
 		tag_id = create_new_id_lookup(table->head, tag);
 		if((e = add_node(table, node)) < 0) {
-			goto fail;
+			delete_element(node->e);
+			kfree(node);
+			return e;
 		}
 		table->num_tags++;
 	}
-	if (insert_entry(node->e, i) < 0)
-		return -ENOMEM;
+
+	insert_entry(node->e, i);
 	return 0;
-fail:
-	if (node->e)
-		delete_element(node->e);
-	if (node)
-		kfree(node);
-	return -ENOMEM; 
 }
 
 /* Returns the table_element structure of inodes associated with the specified tag.  */
