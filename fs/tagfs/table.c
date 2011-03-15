@@ -120,13 +120,23 @@ int add_node(struct hash_table *table, struct tag_node *new_node)
 	
 }
 
-/* Removes an inode from the specified tag. This is not fully implemented. */
+/* Removes an inode from the specified tag. */
 void remove(struct hash_table *table, const char *tag, unsigned long inode_num) {
 	struct tag_node *node;
+	struct tag_node *prev;
 	node = find_node(table, tag);
 	if(node) {
 		remove_entry(node->e, inode_num);
 		if(size(node->e) == 0) {
+			prev = table->table[hash_tag(tag)];
+			/* Handle the case where the table_element is 
+			   in the linked list due to collision */
+			if(unlikely(prev != node)) {
+				while(prev->next != node) {
+					prev = prev->next;
+				}
+				prev->next = node->next;
+			}
 			kfree(node);
 			table->num_tags--;
 		}

@@ -24,6 +24,8 @@
 #include <linux/slab.h>
 #include <asm/uaccess.h>
 
+#include "table.h"
+
 #define TAGFS_DEFAULT_MODE	0755
 
 static int tagfs_set_page_dirty(struct page *page);
