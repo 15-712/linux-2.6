@@ -21,7 +21,7 @@ struct table_element;
 struct inode_entry {
 	struct inode *ino;
 	char filename[MAX_FILENAME_LEN];
-	unsigned long long hash;
+	unsigned int hash;
 };
 
 
