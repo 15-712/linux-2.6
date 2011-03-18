@@ -71,6 +71,32 @@ static inline unsigned long hash_tag(const char *name)
 	return hash >> (BITS_PER_LONG - NUM_HASH_BITS);
 }
 
+/* Removes a tag from the lookup table */
+unsigned int remove_tag(struct hash_table *table, int index) {
+	struct tag_node *node;
+	struct free_list_entry *free_list;
+	struct free_list_entry *new_entry;
+	node = find_node(table, tag);
+	if(node) {
+		kfree(table->lookup_table->tag[node->tag_id]);
+		table->lookup_table->tag[node->tag_id] = NULL;
+
+		free_list = table->lookup_table->free_list;
+		new_entry = kmalloc(sizeof(struct free_list_entry), GFP_KERNEL);
+		if(!new_entry) {
+			return -ENOMEM;
+		}
+		if(!free_list) {
+			table->lookup_table->free_list = new_entry;
+		} else {
+			while(free_list->next) {
+				free_list = free_list->next;
+			}
+			free_list->next = new_free;
+		}
+	}
+}
+
 /* Assigns and ID to a tag and creates a new entry in the lookup table */
 unsigned int create_new_tag(struct hash_table *table, const char *tag)
 {
@@ -179,29 +205,14 @@ int remove(struct hash_table *table, const char *tag, unsigned long inode_num) {
 			/* decrement tag count */
 			table->num_tags--;
 
-			/* remove tag from lookup table */
-			kfree(table->lookup_table->tag[node->tag_id]);
-			table->lookup_table->tag[node->tag_id] = '\0';
-
 			/* remove tag from hash table */
 			kfree(node->e);
 			remove_node(table, tag);
 
-			/* Update free list */
-			free_list = table->lookup_table->free_list;
-			new_free = kmalloc(sizeof(struct free_list_entry), GFP_KERNEL);
-			if(!new_free)
-				return -ENOMEM;
-			if(!free_list) {
-				table->lookup_table->free_list = new_free;
-
-			} else {
-				while(free_list->next) {
-					free_list = free_list->next;
-				}
-				free_list->next = new_free;
-			}
+			/* remove tag from lookup table */
+			remove_tag(table, node->tag_id);
 		}
+
 	}
 	return 0;
 }
@@ -219,19 +230,19 @@ int insert(struct hash_table *table, const char *tag, const struct inode_entry *
 		if(!node)
 			return NO_MEMORY;
 		node->next = NULL;
-		tag_id = create_new_tag(table, tag);
+		tag_id = create_new_tag(table, node->tag_id);
 		if(tag_id == NO_MEMORY) {
 			kfree(node);
 			return NO_MEMORY;
 		}
 		node->e = new_element();
 		if (!node->e) {
-	   		//remove tag
+	   		remove_tag(table, node->tag_id);	
 			kfree(node);
 		}
 		if((e = add_node(table, node)) < 0) {
 			delete_element(node->e);
-			//remove tag
+	   		remove_tag(table, node->tag_id);	
 			kfree(node);
 			return e;
 		}
