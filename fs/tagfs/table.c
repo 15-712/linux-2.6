@@ -73,28 +73,25 @@ static inline unsigned long hash_tag(const char *name)
 
 /* Removes a tag from the lookup table */
 unsigned int remove_tag(struct hash_table *table, int index) {
-	struct tag_node *node;
 	struct free_list_entry *free_list;
 	struct free_list_entry *new_entry;
-	node = find_node(table, tag);
-	if(node) {
-		kfree(table->lookup_table->tag[node->tag_id]);
-		table->lookup_table->tag[node->tag_id] = NULL;
+	kfree(table->lookup_table->tag[index]);
+	table->lookup_table->tag[index] = NULL;
 
-		free_list = table->lookup_table->free_list;
-		new_entry = kmalloc(sizeof(struct free_list_entry), GFP_KERNEL);
-		if(!new_entry) {
-			return -ENOMEM;
-		}
-		if(!free_list) {
-			table->lookup_table->free_list = new_entry;
-		} else {
-			while(free_list->next) {
-				free_list = free_list->next;
-			}
-			free_list->next = new_free;
-		}
+	free_list = table->lookup_table->free_list;
+	new_entry = kmalloc(sizeof(struct free_list_entry), GFP_KERNEL);
+	if(!new_entry) {
+		return -ENOMEM;
 	}
+	if(!free_list) {
+		table->lookup_table->free_list = new_entry;
+	} else {
+		while(free_list->next) {
+			free_list = free_list->next;
+		}
+		free_list->next = new_entry;
+	}
+	return 0;
 }
 
 /* Assigns and ID to a tag and creates a new entry in the lookup table */
@@ -195,8 +192,6 @@ int remove_node(struct hash_table *table, const char *tag) {
 /* Removes an inode from the specified tag. */
 int remove(struct hash_table *table, const char *tag, unsigned long inode_num) {
 	struct tag_node *node;
-	struct free_list_entry *free_list;
-	struct free_list_entry *new_free;
 	node = find_node(table, tag);
 	if(node) {
 		remove_entry(node->e, inode_num);
@@ -230,7 +225,7 @@ int insert(struct hash_table *table, const char *tag, const struct inode_entry *
 		if(!node)
 			return NO_MEMORY;
 		node->next = NULL;
-		tag_id = create_new_tag(table, node->tag_id);
+		tag_id = create_new_tag(table, tag);
 		if(tag_id == NO_MEMORY) {
 			kfree(node);
 			return NO_MEMORY;

@@ -6,21 +6,13 @@
 /* Creates a fake inode entry with the specified filename and inode number */
 static struct inode_entry* create_entry(const char *name, unsigned long ino) {
 	struct inode_entry *entry;
-	struct inode *inode;
 	entry = kmalloc(sizeof(struct inode_entry), GFP_KERNEL); 
 	if(!entry) {
 		printk("Unable to create inode entry\n");
 		return NULL;
 	}
-	inode = kmalloc(sizeof(struct inode), GFP_KERNEL);
-	if(!inode) {
-		printk("Unable to create inode\n");
-		kfree(entry);
-		return NULL;
-	}
 
-	inode->i_ino = ino;
-	entry->ino = inode;
+	entry->ino = ino;
 	strlcpy(entry->filename, name, MAX_FILENAME_LEN);
 	entry->hash = 1;
 	return entry;
