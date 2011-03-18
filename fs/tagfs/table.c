@@ -15,11 +15,24 @@
 
 #define MAX_TAG_LEN	255
 #define NUM_HASH_BITS	12
+#define INITIAL_TAG_CAPACITY	1024
 
 struct hash_table {
 	struct tag_node *table[1<<NUM_HASH_BITS];
-	struct tag_name_id *head;
+	struct tag_lookup_array *lookup_table;
 	unsigned int num_tags;
+};
+
+
+struct tag_lookup_array {
+	char **tag;
+	unsigned int capacity;
+	struct free_list_entry *free_list;
+};
+
+struct free_list_entry {
+	int free_index;
+	struct free_list_entry *next;
 };
 
 /* Struct for the buckets of the hash table.
@@ -31,15 +44,9 @@ struct tag_node {
 	struct tag_node *next;
 };
 
-/* Linked list that allows tags to be looked up by id */
-struct tag_name_id {
-	int id;
-	char tag[MAX_TAG_LEN];
-	struct tag_name_id *next;
-};
-
 enum tag_node_error {
-	INVALID_NODE = -255,
+	INVALID_TABLE = -255,
+	INVALID_NODE,
 };
 
 /* 
@@ -65,26 +72,34 @@ static inline unsigned long hash_tag(const char *name)
 }
 
 /* Assigns and ID to a tag and creates a new entry in the lookup table */
-struct tag_name_id *create_new_id_lookup(struct tag_name_id *head, const char *tag)
+unsigned int create_new_tag(struct hash_table *table, const char *tag)
 {
-	struct tag_name_id *t; 
-	t = kmalloc(sizeof(struct tag_name_id), GFP_KERNEL);
-	if (!t)
-		return t;
-	if(head == NULL) {
-		strlcpy(t->tag, tag, MAX_TAG_LEN);
-		t->id = 1;
-	} else if(head->next == NULL) {
-		strlcpy(t->tag, tag, MAX_TAG_LEN);
-		t->id = head->id+1;
-		head->next = t;
-	} else if(head->next->id > head->id+1) {
-		strlcpy(t->tag, tag, MAX_TAG_LEN);
-		t->id = head->id+1;
-		t->next = head->next;
-		head->next = t;
+	struct tag_lookup_array *t; 
+	struct free_list_entry *free_list;
+	unsigned int id;
+	t = table->lookup_table;
+	free_list = t->free_list;
+	if(free_list) {
+		id = free_list->free_index;
+		t->free_list = free_list->next;
+		kfree(free_list);
+	} else if(table->num_tags == t->capacity) {
+		char **new_tag_array;
+		new_tag_array = krealloc(t->tag, t->capacity << 1, GFP_KERNEL);		
+		if(!new_tag_array)
+			return NO_MEMORY; 
+		t->tag = new_tag_array;
+		t->capacity <<= 1;
+		id = table->num_tags;
+	} else {
+		id = table->num_tags;
 	}
-	return t;
+	t->tag[id] = kmalloc(sizeof(char[MAX_TAG_LEN]), GFP_KERNEL);
+	if(!t->tag[id])
+		return NO_MEMORY;
+	strlcpy(t->tag[id], tag, MAX_TAG_LEN);
+	table->num_tags++;
+	return id;
 }
 
 /* Searches the hash table for a node with a given tag 
@@ -106,10 +121,10 @@ int add_node(struct hash_table *table, struct tag_node *new_node)
 {
 	struct tag_node *node;
 	if(!table)
-		return INVALID_NODE;
+		return INVALID_TABLE;
 	node = table->table[hash_tag(new_node->tag)];
 	if(likely(node == NULL)) {
-		node = new_node;
+		table->table[hash_tag(new_node->tag)] = new_node;
 	} else {
 		while(node->next != NULL) {
 			node = node->next;
@@ -120,34 +135,81 @@ int add_node(struct hash_table *table, struct tag_node *new_node)
 	
 }
 
-/* Removes an inode from the specified tag. */
-void remove(struct hash_table *table, const char *tag, unsigned long inode_num) {
+int remove_node(struct hash_table *table, const char *tag) {
+	struct tag_node *head;
 	struct tag_node *node;
-	struct tag_node *prev;
+	int id = hash_tag(tag);
+	if(!table)
+		return INVALID_TABLE;
+	head = table->table[id];
+	if(!head) {
+		return INVALID_NODE;
+	}
+	/* no collision in hash table */
+	if(!head->next) {
+		kfree(head);
+		table->table[id] = NULL;
+		return 0;
+
+	}
+
+	/* collision in hash table */
+	while(head->next && strncmp(head->next->tag, tag, MAX_TAG_LEN) != 0) {
+		head = head->next;
+	}
+
+	node = head->next;	
+	head->next = node->next;
+	kfree(node);
+	return 0;
+
+}
+
+/* Removes an inode from the specified tag. */
+int remove(struct hash_table *table, const char *tag, unsigned long inode_num) {
+	struct tag_node *node;
+	struct free_list_entry *free_list;
+	struct free_list_entry *new_free;
 	node = find_node(table, tag);
 	if(node) {
 		remove_entry(node->e, inode_num);
 		if(size(node->e) == 0) {
-			prev = table->table[hash_tag(tag)];
-			/* Handle the case where the table_element is 
-			   in the linked list due to collision */
-			if(unlikely(prev != node)) {
-				while(prev->next != node) {
-					prev = prev->next;
-				}
-				prev->next = node->next;
-			}
-			kfree(node);
+
+			/* decrement tag count */
 			table->num_tags--;
+
+			/* remove tag from lookup table */
+			kfree(table->lookup_table->tag[node->tag_id]);
+			table->lookup_table->tag[node->tag_id] = '\0';
+
+			/* remove tag from hash table */
+			kfree(node->e);
+			remove_node(table, tag);
+
+			/* Update free list */
+			free_list = table->lookup_table->free_list;
+			new_free = kmalloc(sizeof(struct free_list_entry), GFP_KERNEL);
+			if(!new_free)
+				return -ENOMEM;
+			if(!free_list) {
+				table->lookup_table->free_list = new_free;
+
+			} else {
+				while(free_list->next) {
+					free_list = free_list->next;
+				}
+				free_list->next = new_free;
+			}
 		}
 	}
+	return 0;
 }
 
 /* Inserts an inode in the given tag entry. Creates tag if necessary. */
 int insert(struct hash_table *table, const char *tag, const struct inode_entry *i)
 {
 	struct tag_node *node;
-	struct tag_name_id *tag_id;
+	unsigned int tag_id;
 	int e;
 	node = find_node(table, tag);
 	if(!node) {
@@ -158,17 +220,21 @@ int insert(struct hash_table *table, const char *tag, const struct inode_entry *
 		node->next = NULL;
 		node->e = new_element();
 		strlcpy(node->tag, tag, MAX_TAG_LEN);
-		tag_id = create_new_id_lookup(table->head, tag);
+		tag_id = create_new_tag(table, tag);
+		if(tag_id == NO_MEMORY) {
+			delete_element(node->e);
+			kfree(node);
+			return -ENOMEM;
+		}
+		node->tag_id = tag_id;
 		if((e = add_node(table, node)) < 0) {
 			delete_element(node->e);
 			kfree(node);
 			return e;
 		}
-		table->num_tags++;
 	}
 
-	insert_entry(node->e, i);
-	return 0;
+	return insert_entry(node->e, i);
 }
 
 /* Returns the table_element structure of inodes associated with the specified tag.  */
@@ -184,7 +250,37 @@ struct table_element * get_inodes(struct hash_table *table, char* tag)
 struct hash_table * create_table(void)
 {
 	struct hash_table *head;
+	struct tag_lookup_array *lookup;
+	int i;
+
+	/* Allocate hash table */
 	head = kmalloc(sizeof(struct hash_table),  GFP_KERNEL);
+	if(!head)
+		return NULL;
+	for(i=0; i < 1<<NUM_HASH_BITS; i++) {
+		head->table[i] = NULL;
+	}
+
+	/* Allocate lookup table */
+	lookup = kmalloc(sizeof(struct tag_lookup_array), GFP_KERNEL);
+	if(!lookup) {
+		kfree(head);
+		return NULL;
+	}
+	lookup->tag = kmalloc(sizeof(lookup->tag) * INITIAL_TAG_CAPACITY, GFP_KERNEL);
+	if(!lookup->tag) {
+		kfree(lookup);
+		kfree(head);
+		return NULL;
+	}
+	lookup->capacity = INITIAL_TAG_CAPACITY;
+	lookup->free_list = NULL;
+	for(i=0; i < lookup->capacity; i++) {
+		lookup->tag[i] = '\0';
+	}
+	head->lookup_table = lookup;
+	head->num_tags = 0;
+
 	return head;
 }
 
