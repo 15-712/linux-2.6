@@ -138,12 +138,13 @@ int add_node(struct hash_table *table, struct tag_node *new_node)
 int remove_node(struct hash_table *table, const char *tag) {
 	struct tag_node *head;
 	struct tag_node *node;
-	int id = hash_tag(tag);
+	int id;
 	if(!table)
 		return INVALID_TABLE;
+	id = hash_tag(tag);
 	head = table->table[id];
 	if(!head) {
-		return INVALID_NODE;
+		return 0;
 	}
 	/* no collision in hash table */
 	if(!head->next) {
@@ -216,22 +217,26 @@ int insert(struct hash_table *table, const char *tag, const struct inode_entry *
 		/* Create empty table element */
 		node = kmalloc(sizeof(struct tag_node), GFP_KERNEL);
 		if(!node)
-			return -ENOMEM;
+			return NO_MEMORY;
 		node->next = NULL;
-		node->e = new_element();
-		strlcpy(node->tag, tag, MAX_TAG_LEN);
 		tag_id = create_new_tag(table, tag);
 		if(tag_id == NO_MEMORY) {
-			delete_element(node->e);
 			kfree(node);
-			return -ENOMEM;
+			return NO_MEMORY;
 		}
-		node->tag_id = tag_id;
+		node->e = new_element();
+		if (!node->e) {
+	   		//remove tag
+			kfree(node);
+		}
 		if((e = add_node(table, node)) < 0) {
 			delete_element(node->e);
+			//remove tag
 			kfree(node);
 			return e;
 		}
+		strlcpy(node->tag, tag, MAX_TAG_LEN);
+		node->tag_id = tag_id;
 	}
 
 	return insert_entry(node->e, i);
