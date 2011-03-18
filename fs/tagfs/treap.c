@@ -108,10 +108,10 @@ int insert_entry(struct table_element *e, const struct inode_entry *entry){
 	curr = &e->root;
 	/* Normal binary tree insertion */
 	while(*curr) {
-		if ((*curr)->entry.ino->i_ino == entry->ino->i_ino)
+		if ((*curr)->entry.ino == entry->ino)
 			return DUPLICATE;
 		prev = *curr;
-		if ((*curr)->entry.ino->i_ino < entry->ino->i_ino)
+		if ((*curr)->entry.ino < entry->ino)
 			curr = &((*curr)->pointers[RIGHT]);
 		else
 			curr = &((*curr)->pointers[LEFT]);
@@ -121,7 +121,7 @@ int insert_entry(struct table_element *e, const struct inode_entry *entry){
 	/* Maintain heap ordering */
 	while(n->pointers[PARENT] && n->pointers[PARENT]->prio > n->prio) {
 		struct treap_node *parent = n->pointers[PARENT];
-		if (n->entry.ino->i_ino < parent->entry.ino->i_ino) {
+		if (n->entry.ino < parent->entry.ino) {
 			parent->pointers[LEFT] = n->pointers[RIGHT];
 			n->pointers[RIGHT] = parent;
 		} 
@@ -142,9 +142,9 @@ void remove_entry(struct table_element *e, unsigned long ino) {
 	struct treap_node *curr = e->root;
 	/* Find the entry */
 	while(curr) {
-		if (curr->entry.ino->i_ino < ino)
+		if (curr->entry.ino < ino)
 			curr = curr->pointers[RIGHT];
-		else if (curr->entry.ino->i_ino > ino)
+		else if (curr->entry.ino > ino)
 			curr = curr->pointers[LEFT];
 		else {
 			/* Rotate entry down to leaf while maintaining heap order */
@@ -168,7 +168,7 @@ void remove_entry(struct table_element *e, unsigned long ino) {
 						e->root = right;
 				}
 			}
-			if (curr->pointers[PARENT]->entry.ino->i_ino > curr->entry.ino->i_ino)
+			if (curr->pointers[PARENT]->entry.ino > curr->entry.ino)
 				curr->pointers[PARENT]->pointers[LEFT] = NULL;
 			else
 				curr->pointers[PARENT]->pointers[RIGHT] = NULL;
@@ -231,14 +231,14 @@ static struct treap_node *split(struct treap_node **less, struct treap_node **gt
 	}
 	memcpy(root, r, sizeof(struct treap_node));
 	root->pointers[LEFT] = root->pointers[RIGHT] = root->pointers[PARENT] = NULL;
-	if (r->entry.ino->i_ino < ino) {
+	if (r->entry.ino < ino) {
 		*less = root;
 		ret = split(&(root->pointers[RIGHT]), gtr, r->pointers[RIGHT], ino, status);
 		if (*status == NO_MEMORY)
 			goto fail;
 		root->pointers[RIGHT]->pointers[PARENT] = root;
 		return ret;
-	} else if (r->entry.ino->i_ino > ino) {
+	} else if (r->entry.ino > ino) {
 		*gtr = root;
 		ret = split(less, &(root->pointers[LEFT]), r->pointers[LEFT], ino, status);
 		if (*status == NO_MEMORY)
@@ -270,7 +270,7 @@ static struct treap_node *treap_union(struct treap_node *r1, struct treap_node *
 	if (r1->prio < r2->prio)
 		return treap_union(r2, r1, status);
 	
-	duplicate = split(&less, &gtr, r2, r1->entry.ino->i_ino, status);
+	duplicate = split(&less, &gtr, r2, r1->entry.ino, status);
 	if (*status == NO_MEMORY)
 		goto fail;
 	if (duplicate)
@@ -310,7 +310,7 @@ static struct treap_node *treap_intersect(struct treap_node *r1, struct treap_no
 	if (r1->prio < r2->prio)
 		return treap_union(r2, r1, status);
 	
-	duplicate = split(&less, &gtr, r2, r1->entry.ino->i_ino, status);
+	duplicate = split(&less, &gtr, r2, r1->entry.ino, status);
 	if (*status == NO_MEMORY)
 		goto fail;
 	left = treap_intersect(r1->pointers[LEFT], less, status);

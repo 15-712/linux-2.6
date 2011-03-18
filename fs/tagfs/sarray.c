@@ -74,9 +74,9 @@ int insert_entry(struct table_element *e, const struct inode_entry *entry)
 		e->entries = new_ptr;
 	}
 	for (i = 0 ; i < e->count ; ++i) {
-		if (entry->ino->i_ino == e->entries[i].ino->i_ino)
+		if (entry->ino == e->entries[i].ino)
 			return DUPLICATE;
-		if (entry->ino->i_ino < e->entries[i].ino->i_ino)
+		if (entry->ino < e->entries[i].ino)
 			break;
 	}
 	index = i;
@@ -92,7 +92,7 @@ void remove_entry(struct table_element *e, unsigned long ino) {
 	if (!e)
 		return;
 	for (i = 0; i < e->count; i++) {
-		if (e->entries[i].ino->i_ino == ino) {
+		if (e->entries[i].ino == ino) {
 			for(; i < e->count - 1; i++)
 				memcpy(&e->entries[i], &e->entries[i+1], sizeof(struct inode_entry));
 			e->count--;
@@ -129,12 +129,12 @@ struct table_element *set_union(struct table_element *e1, struct table_element *
 			break;
 		}
 		else {
-			if (e1->entries[i].ino->i_ino < e2->entries[j].ino->i_ino) {
+			if (e1->entries[i].ino < e2->entries[j].ino) {
 				if (insert_end(result, &e1->entries[i]) == NO_MEMORY)
 					goto fail;
 				i++;
 			} 
-			else if (e1->entries[i].ino->i_ino == e2->entries[j].ino->i_ino) {
+			else if (e1->entries[i].ino == e2->entries[j].ino) {
 				if (insert_end(result, &e1->entries[i]) == NO_MEMORY)
 					goto fail;
 				i++;
@@ -162,9 +162,9 @@ struct table_element *set_intersect(struct table_element *e1, struct table_eleme
 	i = j = 0;
 	/* Essentially does a merge which only counts duplicates */
 	while(i < e1->count && j < e2->count) {
-		if (e1->entries[i].ino->i_ino < e2->entries[j].ino->i_ino)
+		if (e1->entries[i].ino < e2->entries[j].ino)
 			i++;
-		else if (e1->entries[i].ino->i_ino > e2->entries[j].ino->i_ino)
+		else if (e1->entries[i].ino > e2->entries[j].ino)
 			j++;
 		else {
 			if (insert_end(result, &e2->entries[j]) == NO_MEMORY) {
