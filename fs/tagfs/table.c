@@ -80,8 +80,9 @@ unsigned int remove_tag(struct hash_table *table, int index) {
 	free_list = table->lookup_table->free_list;
 	new_entry = kmalloc(sizeof(struct free_list_entry), GFP_KERNEL);
 	if(!new_entry) {
-		return -ENOMEM;
+		return NO_MEMORY;
 	}
+	new_entry->free_index = index;
 	if(!free_list) {
 		table->lookup_table->free_list = new_entry;
 	} else {
@@ -197,7 +198,7 @@ int remove(struct hash_table *table, const char *tag, unsigned long inode_num) {
 			table->num_tags--;
 
 			/* remove tag from hash table */
-			kfree(node->e);
+			delete_element(node->e);
 			remove_node(table, tag);
 
 			/* remove tag from lookup table */
@@ -230,14 +231,16 @@ int insert(struct hash_table *table, const char *tag, const struct inode_entry *
 		if (!node->e) {
 	   		remove_tag(table, node->tag_id);	
 			kfree(node);
+			return NO_MEMORY;
 		}
+
+		strlcpy(node->tag, tag, MAX_TAG_LEN);
 		if((e = add_node(table, node)) < 0) {
 			delete_element(node->e);
 	   		remove_tag(table, node->tag_id);	
 			kfree(node);
 			return e;
 		}
-		strlcpy(node->tag, tag, MAX_TAG_LEN);
 		node->tag_id = tag_id;
 	}
 
