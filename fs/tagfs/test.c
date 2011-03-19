@@ -60,7 +60,6 @@ static void test1(struct hash_table *table, int verbose) {
 }
 
 static void test2(struct hash_table *table, int verbose) {
-	struct inode_entry* entry;
 	printk("Running test #2: \n");
 	if(verbose) printk("Creating inode 'a' with number 100\n");
 	if(verbose) printk("Creating inode 'b' with number 101\n");

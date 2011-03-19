@@ -116,8 +116,6 @@ unsigned int create_new_tag(struct hash_table *table, const char *tag)
 	} else {
 		id = table->num_tags;
 	}
-	if(!t->tag[id*MAX_TAG_LEN])
-		return NO_MEMORY;
 	strlcpy(&(t->tag[id*MAX_TAG_LEN]), tag, MAX_TAG_LEN);
 	table->num_tags++;
 	return id;
