@@ -19,7 +19,7 @@ struct table_element;
 
 /* Struct which defines the data stored by table elements */
 struct inode_entry {
-	struct inode *ino;
+	unsigned long long ino;
 	char filename[MAX_FILENAME_LEN];
 	unsigned int hash;
 };

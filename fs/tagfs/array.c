@@ -61,7 +61,7 @@ static int insert_entry_helper(struct table_element *e, const struct inode_entry
 	/* Check for duplicate entries */
 	if (checkDuplicates) {
 		for (i = 0 ; i < e->count ; ++i) {
-			if (entry->ino->i_ino == e->entries[i].ino->i_ino)
+			if (entry->ino == e->entries[i].ino)
 				return DUPLICATE;
 		}
 	}
@@ -78,7 +78,7 @@ void remove_entry(struct table_element *e, unsigned long ino) {
 	if (!e)
 		return;
 	for (i = 0; i < e->count; i++) {
-		if (e->entries[i].ino->i_ino == ino) {
+		if (e->entries[i].ino == ino) {
 			for(; i < e->count - 1; ++i)
 				memcpy(&e->entries[i], &e->entries[i+1], sizeof(struct inode_entry));
 			e->count--;
@@ -116,7 +116,7 @@ struct table_element *set_intersect(struct table_element *e1, struct table_eleme
 	for (i = 0; i < e1->count; ++i) {
 		unsigned int j;
 		for (j = 0; j < e2->count; ++j) {
-			if (e1->entries[i].ino->i_ino == e2->entries[j].ino->i_ino) {
+			if (e1->entries[i].ino == e2->entries[j].ino) {
 				if (insert_entry_helper(result, &e1->entries[i], 0) == NO_MEMORY) {
 					delete_element(result);
 					return NULL;
