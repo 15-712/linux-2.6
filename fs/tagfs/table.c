@@ -25,7 +25,7 @@ struct hash_table {
 
 
 struct tag_lookup_array {
-	char **tag;
+	char *tag;
 	unsigned int capacity;
 	struct free_list_entry *free_list;
 };
@@ -75,8 +75,7 @@ static inline unsigned long hash_tag(const char *name)
 unsigned int remove_tag(struct hash_table *table, int index) {
 	struct free_list_entry *free_list;
 	struct free_list_entry *new_entry;
-	kfree(table->lookup_table->tag[index]);
-	table->lookup_table->tag[index] = NULL;
+	table->lookup_table->tag[index*MAX_TAG_LEN] = '\0';
 
 	free_list = table->lookup_table->free_list;
 	new_entry = kmalloc(sizeof(struct free_list_entry), GFP_KERNEL);
@@ -107,8 +106,8 @@ unsigned int create_new_tag(struct hash_table *table, const char *tag)
 		t->free_list = free_list->next;
 		kfree(free_list);
 	} else if(table->num_tags == t->capacity) {
-		char **new_tag_array;
-		new_tag_array = krealloc(t->tag, t->capacity << 1, GFP_KERNEL);		
+		char *new_tag_array;
+		new_tag_array = krealloc(t->tag, (t->capacity << 1) * MAX_TAG_LEN, GFP_KERNEL);		
 		if(!new_tag_array)
 			return NO_MEMORY; 
 		t->tag = new_tag_array;
@@ -117,10 +116,9 @@ unsigned int create_new_tag(struct hash_table *table, const char *tag)
 	} else {
 		id = table->num_tags;
 	}
-	t->tag[id] = kmalloc(sizeof(char[MAX_TAG_LEN]), GFP_KERNEL);
-	if(!t->tag[id])
+	if(!t->tag[id*MAX_TAG_LEN])
 		return NO_MEMORY;
-	strlcpy(t->tag[id], tag, MAX_TAG_LEN);
+	strlcpy(&(t->tag[id*MAX_TAG_LEN]), tag, MAX_TAG_LEN);
 	table->num_tags++;
 	return id;
 }
@@ -262,35 +260,45 @@ struct hash_table * create_table(void)
 {
 	struct hash_table *head;
 	struct tag_lookup_array *lookup;
+	char *tags;
 	int i;
 
 	/* Allocate hash table */
 	head = kmalloc(sizeof(struct hash_table),  GFP_KERNEL);
 	if(!head)
 		return NULL;
-	for(i=0; i < 1<<NUM_HASH_BITS; i++) {
-		head->table[i] = NULL;
+
+	/* Allocate tag block */
+	tags = kmalloc(sizeof(char)*MAX_TAG_LEN*INITIAL_TAG_CAPACITY, GFP_KERNEL);
+	if(!tags) {
+		kfree(head);
+		return NULL;
 	}
 
 	/* Allocate lookup table */
 	lookup = kmalloc(sizeof(struct tag_lookup_array), GFP_KERNEL);
 	if(!lookup) {
 		kfree(head);
+		kfree(tags);
 		return NULL;
 	}
-	lookup->tag = kmalloc(sizeof(lookup->tag) * INITIAL_TAG_CAPACITY, GFP_KERNEL);
-	if(!lookup->tag) {
-		kfree(lookup);
-		kfree(head);
-		return NULL;
-	}
+
+	/* Initialize lookup */
 	lookup->capacity = INITIAL_TAG_CAPACITY;
 	lookup->free_list = NULL;
+	lookup->tag = tags;
+
+	/* Initialize tag names */
 	for(i=0; i < lookup->capacity; i++) {
-		lookup->tag[i] = '\0';
+		lookup->tag[i*MAX_TAG_LEN] = '\0';
 	}
+
+	/* Initialize head */
 	head->lookup_table = lookup;
 	head->num_tags = 0;
+	for(i=0; i < 1<<NUM_HASH_BITS; i++) {
+		head->table[i] = NULL;
+	}
 
 	return head;
 }
