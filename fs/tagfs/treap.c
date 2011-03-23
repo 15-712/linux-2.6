@@ -382,3 +382,7 @@ fail:
 	delete_element(result);
 	return NULL;
 }
+
+unsigned int size(struct table_element *e) {
+	return e->count;
+}
