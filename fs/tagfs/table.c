@@ -9,11 +9,10 @@
  *
  */
 
-#include "table_element.h"
+#include "table.h"
 #include <linux/hash.h>
 #include <linux/slab.h>
 
-#define MAX_TAG_LEN	255
 #define NUM_HASH_BITS	12
 #define INITIAL_TAG_CAPACITY	1024
 
@@ -210,7 +209,7 @@ int remove(struct hash_table *table, const char *tag, unsigned long inode_num) {
 }
 
 /* Inserts an inode in the given tag entry. Creates tag if necessary. */
-int insert(struct hash_table *table, const char *tag, const struct inode_entry *i)
+int insert(struct hash_table *table, const char *tag, struct inode_entry *i)
 {
 	struct tag_node *node;
 	unsigned int tag_id;
@@ -248,7 +247,7 @@ int insert(struct hash_table *table, const char *tag, const struct inode_entry *
 }
 
 /* Returns the table_element structure of inodes associated with the specified tag.  */
-struct table_element * get_inodes(struct hash_table *table, char* tag) 
+struct table_element * get_inodes(struct hash_table *table, const char* tag) 
 {
 	struct tag_node *n = find_node(table, tag);
 	if(!n)
@@ -304,3 +303,30 @@ struct hash_table * create_table(void)
 	return head;
 }
 
+void destroy_table(struct hash_table *table) {
+	int i;
+	struct free_list_entry *curr;
+	if (!table)
+		return;
+	curr = table->lookup_table->free_list;
+	while(curr) {
+		struct free_list_entry *temp = curr;
+		curr = curr->next;
+		kfree(temp);
+	}
+	kfree(table->lookup_table->tag);
+	for(i = 0; i < 1 << NUM_HASH_BITS; i++) {
+		struct tag_node *curr = table->table[i];
+		while(curr) {
+			struct tag_node *temp = curr;
+			curr = curr->next;
+			delete_element(temp->e);
+			kfree(temp);
+		}
+	}
+	kfree(table);
+}
+
+const char *get_tag(struct hash_table *table, int id) {
+	return table->lookup_table->tag + id * MAX_TAG_LEN;
+}

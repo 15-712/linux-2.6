@@ -636,7 +636,17 @@ __SYSCALL(__NR_recvmmsg, sys_recvmmsg)
  * Architectures may provide up to 16 syscalls of their own
  * starting with this value.
  */
-#define __NR_arch_specific_syscall 244
+//#define __NR_arch_specific_syscall 244
+
+/* tagfs specfic system calls */
+#define __NR_addtag 244
+__SYSCALL(__NR_addtag, sys_addtag)
+#define __NR_rmtag 245
+#define __NR_lstag 246
+#define __NR_chtag 247
+#define __NR_pwt 248
+#define __NR_tagopen 249
+#define __NR_mvtag 250
 
 #define __NR_wait4 260
 __SYSCALL(__NR_wait4, sys_wait4)

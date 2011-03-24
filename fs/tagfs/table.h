@@ -3,11 +3,17 @@
 
 #include "table_element.h"
 
+#define MAX_TAG_LEN	255
+
 struct hash_table;
 
+extern struct hash_table *table;
+
 struct hash_table *create_table(void);
-struct table_element *get_inodes(struct hash_table *, char *);
-int insert(struct hash_table *, const char *, const struct inode_entry *);
+void destroy_table(struct hash_table *);
+struct table_element *get_inodes(struct hash_table *, const char *);
+const char *get_tag(struct hash_table *, int);
+int insert(struct hash_table *, const char *, struct inode_entry *);
 int remove(struct hash_table *, const char *, unsigned long);
 
 
