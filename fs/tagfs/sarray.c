@@ -96,6 +96,8 @@ void remove_entry(struct table_element *e, unsigned long ino) {
 	for (i = 0; i < e->count; i++) {
 		if (e->entries[i]->ino == ino) {
 			e->entries[i]->count--;
+			if (e->entries[i]->count == 0)
+				kfree(e->entries[i]);
 			for(; i < e->count - 1; i++)
 				e->entries[i] = e->entries[i+1];
 			e->count--;
