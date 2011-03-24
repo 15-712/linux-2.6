@@ -164,10 +164,10 @@ static void test2(struct hash_table *table, int verbose) {
 	if(size(result) != 3)
 		printk("ERROR: Untion returned an incorrect number of results. Found %i, expected 3.\n", size(result));
 	else
-		printk("Successfully recovered 3 results.");
+		printk("Successfully recovered 3 results.\n");
 	delete_element(result);
 
-	printk("Cleaning up");	
+	printk("Cleaning up\n");	
 	table_remove(table, "a", 100);
 	table_remove(table, "letter", 100);
 	table_remove(table, "first", 100);
@@ -183,7 +183,7 @@ static void test2(struct hash_table *table, int verbose) {
 
 
 
-int main(void) {
+static int __init init_test(void) {
 	struct hash_table* table;
 	printk("Creating a new tagfs hash table\n");
 	table = create_table();
@@ -195,3 +195,10 @@ int main(void) {
 	delete_table(table); 
 	return 0;
 }
+
+static void  __exit exit_test(void) {
+	printk("Unloading testing module of tagfs\n");
+}
+
+module_init(init_test)
+module_exit(exit_test)
