@@ -17,16 +17,15 @@
 
 struct table_element;
 
-/* Struct which defines the data stored by table elements */
 struct inode_entry {
-	unsigned long long ino;
-	char filename[MAX_FILENAME_LEN];
-	unsigned int hash;
+	unsigned long ino;
+	char filename[MAX_FILENAME_LEN+1];
+	unsigned int count;
 };
 
 
 /* Insert an inode entry into the table_element */
-int insert_entry(struct table_element *, const struct inode_entry *);
+int insert_entry(struct table_element *, struct inode_entry *);
 /* Remove an entry from a table_element based on inode number */
 void remove_entry(struct table_element *, unsigned long);
 /* Returns a table_element representing the union of the entries of two table_elements */
@@ -38,9 +37,11 @@ struct table_element *new_element(void);
 /* Frees all memory associated with the table_element */
 void delete_element(struct table_element *);
 /* Returns the set of entries as an array */
-const struct inode_entry *set_to_array(struct table_element *);
+struct inode_entry **set_to_array(struct table_element *);
 /* Returns the number of entrices in the table element */
 unsigned int size(struct table_element *);
+
+struct inode_entry *find_entry(const struct table_element *, unsigned long);
 
 /* The set of table_element_error values */
 enum table_element_error {

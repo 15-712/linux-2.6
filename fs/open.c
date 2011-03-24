@@ -33,6 +33,19 @@
 
 #include "internal.h"
 
+int null_addtag(const char __user *a, const char __user *b) {
+	return -ENOSYS;
+}
+
+int (*addtag_ptr)(const char __user *, const char __user *) = null_addtag;
+
+EXPORT_SYMBOL(null_addtag);
+EXPORT_SYMBOL(addtag_ptr);
+
+SYSCALL_DEFINE2(addtag, const char __user *, name, const char __user *, tag) {
+	return addtag_ptr(name, tag);
+}
+
 int do_truncate(struct dentry *dentry, loff_t length, unsigned int time_attrs,
 	struct file *filp)
 {

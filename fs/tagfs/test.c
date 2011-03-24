@@ -13,7 +13,7 @@ static struct inode_entry* create_entry(const char *name, unsigned long ino) {
 
 	entry->ino = ino;
 	strlcpy(entry->filename, name, MAX_FILENAME_LEN);
-	entry->hash = 1;
+	entry->count = 0;
 	return entry;
 }
 
@@ -151,7 +151,7 @@ static void test2(struct hash_table *table, int verbose) {
 	if(size(result) != 1)
 		printk("ERROR: Intersection returned too many results.\n");
 	else
-		printk("Successfully recovered inode #%i\n", (int)set_to_array(result)[0].ino);
+		printk("Successfully recovered inode #%i\n", (int)set_to_array(result)[0]->ino);
 
 	delete_element(result);
 	/* Union */

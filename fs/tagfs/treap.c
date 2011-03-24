@@ -7,6 +7,7 @@
  *
  *  Note: probably not working at the moment, don't use
  *
+ *  XXX: DO NOT USE
  */
 
 
@@ -381,4 +382,8 @@ struct table_element *set_intersect(struct table_element * e1, struct table_elem
 fail:
 	delete_element(result);
 	return NULL;
+}
+
+unsigned int size(struct table_element *e) {
+	return e->count;
 }

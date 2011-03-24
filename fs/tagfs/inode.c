@@ -25,8 +25,11 @@
 #include <asm/uaccess.h>
 
 #include "table.h"
+#include "syscall.h"
 
 #define TAGFS_DEFAULT_MODE	0755
+
+struct hash_table *table;
 
 static int tagfs_set_page_dirty(struct page *page);
 
@@ -270,11 +273,15 @@ static struct file_system_type tagfs_fs_type = {
 static int __init init_tagfs_fs(void)
 {
 	printk("Loading tagfs kernel module\n");
+	addtag_ptr = addtag;
+	table = create_table();
 	return register_filesystem(&tagfs_fs_type);
 }
 
 static void __exit exit_tagfs_fs(void)
 {
+	addtag_ptr = null_addtag;
+	destroy_table(table);
 	printk("Unloading tagfs kernel module\n");
 	unregister_filesystem(&tagfs_fs_type);
 }

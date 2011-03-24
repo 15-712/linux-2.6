@@ -7,6 +7,8 @@
  *  This is the basic unsorted array implementation of the table element
  *  All operations essentially require linear time to run and is probably
  *  really slow. Baseline for performance tests
+ *
+ *  XXX: DO NOT USE
  */
 
 
@@ -68,6 +70,7 @@ static int insert_entry_helper(struct table_element *e, const struct inode_entry
 	memcpy(&e->entries[e->count++], entry, sizeof(struct inode_entry));
 	return 0;
 }
+
 int insert_entry(struct table_element *e, const struct inode_entry *entry) 
 {
 	return insert_entry_helper(e, entry, 1);
