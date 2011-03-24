@@ -83,6 +83,7 @@ unsigned int remove_tag(struct hash_table *table, int index) {
 		return NO_MEMORY;
 	}
 	new_entry->free_index = index;
+	new_entry->next = NULL;
 	if(!free_list) {
 		table->lookup_table->free_list = new_entry;
 	} else {
@@ -137,14 +138,14 @@ struct tag_node *find_node(struct hash_table *table, const char *tag)
 }
 
 /* Adds a node to the hash table. */
-int add_node(struct hash_table *table, struct tag_node *new_node) 
+int add_node(struct hash_table *table, struct tag_node *new_node, unsigned int hash) 
 {
 	struct tag_node *node;
 	if(!table)
 		return INVALID_TABLE;
-	node = table->table[hash_tag(new_node->tag)];
+	node = table->table[hash];
 	if(likely(node == NULL)) {
-		table->table[hash_tag(new_node->tag)] = new_node;
+		table->table[hash] = new_node;
 	} else {
 		while(node->next != NULL) {
 			node = node->next;
@@ -174,6 +175,14 @@ int remove_node(struct hash_table *table, const char *tag) {
 
 	}
 
+	/* remove head */
+	if(strncmp(head->tag, tag, MAX_TAG_LEN) == 0) {
+		node = head;
+		table->table[id] = head->next;
+		kfree(node);
+		return 0;
+	}
+
 	/* collision in hash table */
 	while(head->next && strncmp(head->next->tag, tag, MAX_TAG_LEN) != 0) {
 		head = head->next;
@@ -187,7 +196,7 @@ int remove_node(struct hash_table *table, const char *tag) {
 }
 
 /* Removes an inode from the specified tag. */
-int remove(struct hash_table *table, const char *tag, unsigned long inode_num) {
+int table_remove(struct hash_table *table, const char *tag, unsigned long inode_num) {
 	struct tag_node *node;
 	node = find_node(table, tag);
 	if(node) {
@@ -197,12 +206,12 @@ int remove(struct hash_table *table, const char *tag, unsigned long inode_num) {
 			/* decrement tag count */
 			table->num_tags--;
 
+			/* remove tag from lookup table */
+			remove_tag(table, node->tag_id);
+
 			/* remove tag from hash table */
 			delete_element(node->e);
 			remove_node(table, tag);
-
-			/* remove tag from lookup table */
-			remove_tag(table, node->tag_id);
 		}
 
 	}
@@ -210,7 +219,7 @@ int remove(struct hash_table *table, const char *tag, unsigned long inode_num) {
 }
 
 /* Inserts an inode in the given tag entry. Creates tag if necessary. */
-int insert(struct hash_table *table, const char *tag, const struct inode_entry *i)
+int table_insert(struct hash_table *table, const char *tag, const struct inode_entry *i)
 {
 	struct tag_node *node;
 	unsigned int tag_id;
@@ -229,18 +238,18 @@ int insert(struct hash_table *table, const char *tag, const struct inode_entry *
 		}
 		node->e = new_element();
 		if (!node->e) {
-	   		remove_tag(table, node->tag_id);	
+	   		remove_tag(table, tag_id);	
 			kfree(node);
 			return NO_MEMORY;
 		}
 
-		strlcpy(node->tag, tag, MAX_TAG_LEN);
-		if((e = add_node(table, node)) < 0) {
+		if((e = add_node(table, node, hash_tag(tag))) < 0) {
 			delete_element(node->e);
 	   		remove_tag(table, node->tag_id);	
 			kfree(node);
 			return e;
 		}
+		strlcpy(node->tag, tag, MAX_TAG_LEN);
 		node->tag_id = tag_id;
 	}
 
@@ -304,3 +313,14 @@ struct hash_table * create_table(void)
 	return head;
 }
 
+void delete_table(struct hash_table *table)
+{
+	kfree(table->lookup_table->tag);
+	while(table->lookup_table->free_list != NULL) {
+		struct free_list_entry *n = table->lookup_table->free_list;
+		table->lookup_table->free_list = n->next;
+		kfree(n);
+	}
+	kfree(table->lookup_table);
+	kfree(table);
+}

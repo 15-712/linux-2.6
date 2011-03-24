@@ -1,7 +1,6 @@
-#include <linux/module.h>
-#include <linux/kernel.h>
-#include <linux/slab.h>
+
 #include "table.h"
+#include "linux/slab.h"
 
 /* Creates a fake inode entry with the specified filename and inode number */
 static struct inode_entry* create_entry(const char *name, unsigned long ino) {
@@ -20,7 +19,7 @@ static struct inode_entry* create_entry(const char *name, unsigned long ino) {
 
 static int insert_inode(struct hash_table *table, const char *tag, struct inode_entry *entry) {
 	int result;
-	result = insert(table, tag, entry);
+	result = table_insert(table, tag, entry);
 	if(result != 0) {
 		printk("ERROR: Could not insert entry %s with tag %s\n", entry->filename, tag);
 		return result;
@@ -42,6 +41,7 @@ static void test1(struct hash_table *table, int verbose) {
 	if(insert_inode(table, "letters", entry) != 0)
 		return;
 		
+	kfree(entry);
 	if(verbose) printk("Retreiving table element entries for tag 'letters'\n");
 	element = get_inodes(table, "letters");
 	if(!element) {
@@ -51,7 +51,7 @@ static void test1(struct hash_table *table, int verbose) {
 	}
 
 	if(verbose) printk("Removing inode 'a' from table\n");
-	result = remove(table, "letters", 100);
+	result = table_remove(table, "letters", 100);
 	if(result != 0) {
 		printk("ERROR: Remove returned an error: %d\n", result);
 		return;
@@ -85,12 +85,14 @@ static void test2(struct hash_table *table, int verbose) {
 	if(verbose) printk("Tagging inode 100 with 'first'\n");
 	insert_inode(table, "first", entry);
 
+	kfree(entry);
 	/* Create & insert inode b with tag letter */
 	if(verbose) printk("Creating inode 'b' with number 101\n");
 	entry = create_entry("b", 101);
 	if(verbose) printk("Tagging inode 101 with 'letter', 'b'\n");
 	insert_inode(table, "letter", entry);
 	insert_inode(table, "b", entry);
+	kfree(entry);
 
 	/* Create & insert inode 1 with tag number & first */
 	if(verbose) printk("Creating inode '1' with number 201\n");
@@ -99,6 +101,7 @@ static void test2(struct hash_table *table, int verbose) {
 	insert_inode(table, "number", entry);
 	insert_inode(table, "1", entry);
 	insert_inode(table, "first", entry);
+	kfree(entry);
 
 	/* Create & insert inode 2 with tag number */
 	if(verbose) printk("Creating inode '2' with number 202\n");
@@ -106,6 +109,7 @@ static void test2(struct hash_table *table, int verbose) {
 	if(verbose) printk("Tagging inode 202 with 'number', '2'\n");
 	insert_inode(table, "number", entry);
 	insert_inode(table, "2", entry);
+	kfree(entry);
 
 	if(verbose) printk("Getting tag 'letter'\n");	
 	element1 = get_inodes(table, "letter");
@@ -149,6 +153,7 @@ static void test2(struct hash_table *table, int verbose) {
 	else
 		printk("Successfully recovered inode #%i\n", (int)set_to_array(result)[0].ino);
 
+	delete_element(result);
 	/* Union */
 	if(verbose) printk("Calculate union of number and first\n");	
 	result = set_union(element1, element2);
@@ -160,14 +165,25 @@ static void test2(struct hash_table *table, int verbose) {
 		printk("ERROR: Untion returned an incorrect number of results. Found %i, expected 3.\n", size(result));
 	else
 		printk("Successfully recovered 3 results.");
+	delete_element(result);
 
-	
+	printk("Cleaning up");	
+	table_remove(table, "a", 100);
+	table_remove(table, "letter", 100);
+	table_remove(table, "first", 100);
+	table_remove(table, "b", 101);
+	table_remove(table, "letter", 101);
+	table_remove(table, "1", 201);
+	table_remove(table, "number", 201);
+	table_remove(table, "first", 201);
+	table_remove(table, "2", 202);
+	table_remove(table, "number", 202);
 	printk("Finished test #2\n");
 }
 
 
 
-static int __init init_test(void) {
+int main(void) {
 	struct hash_table* table;
 	printk("Creating a new tagfs hash table\n");
 	table = create_table();
@@ -176,13 +192,6 @@ static int __init init_test(void) {
 	test1(table, 1);
 	test2(table, 1);
 	
-	kfree(table); 
+	delete_table(table); 
 	return 0;
 }
-
-static void  __exit exit_test(void) {
-	printk("Unloading testing module of tagfs\n");
-}
-
-module_init(init_test)
-module_exit(exit_test)
