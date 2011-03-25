@@ -192,7 +192,7 @@ static int __init init_test(void) {
 	test1(table, 1);
 	test2(table, 1);
 	
-	delete_table(table); 
+	destroy_table(table); 
 	return 0;
 }
 
