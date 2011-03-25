@@ -9,12 +9,36 @@
  *
  */
 
-#include "table.h"
-#include <linux/hash.h>
-#include <linux/slab.h>
+#include "table_element.h"
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
 
-#define NUM_HASH_BITS	12
-#define INITIAL_TAG_CAPACITY	1024
+#define GFP_KERNEL 0
+#define kmalloc(S, O) malloc(S)
+#define kfree(P) free(P)
+#define krealloc(P, S, O) realloc(P, S)
+#define unlikely(X) X
+#define likely(X) X
+#define strlcpy(X, Y, S) strncpy(X, Y, S)
+
+#define GOLDEN_RATIO_PRIME_32 0x9e370001UL
+#define GOLDEN_RATIO_PRIME GOLDEN_RATIO_PRIME_32
+#define BITS_PER_LONG 32
+
+#define MAX_TAG_LEN	255
+#define NUM_HASH_BITS	1
+#define INITIAL_TAG_CAPACITY	2
+
+static inline unsigned int hash_long(unsigned int val, unsigned int bits)
+{
+	/* On some cpus multiply is faster, on others gcc will do shifts */
+	unsigned int hash = val * GOLDEN_RATIO_PRIME_32;
+
+	/* High bits are more random, so use them. */
+	return hash >> (32 - bits);
+}
+
 
 struct hash_table {
 	struct tag_node *table[1<<NUM_HASH_BITS];

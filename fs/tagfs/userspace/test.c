@@ -1,6 +1,17 @@
 
 #include "table.h"
-#include "linux/slab.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define GFP_KERNEL 0
+#define kmalloc(S, O) malloc(S)
+#define kfree(P) free(P)
+#define krealloc(P, S, O) realloc(P, S)
+#define unlikely(X) X
+#define likely(X) X
+#define strlcpy(X, Y, S) strncpy(X, Y, S)
+#define printk(...) printf(__VA_ARGS__)
 
 /* Creates a fake inode entry with the specified filename and inode number */
 static struct inode_entry* create_entry(const char *name, unsigned long ino) {
@@ -166,8 +177,8 @@ static void test2(struct hash_table *table, int verbose) {
 	table_remove(table, "a", 100);
 	table_remove(table, "letter", 100);
 	table_remove(table, "first", 100);
-	table_remove(table, "b", 101);
 	table_remove(table, "letter", 101);
+	table_remove(table, "b", 101);
 	table_remove(table, "1", 201);
 	table_remove(table, "number", 201);
 	table_remove(table, "first", 201);
@@ -178,7 +189,7 @@ static void test2(struct hash_table *table, int verbose) {
 
 
 
-static int __init init_test(void) {
+int main(void) {
 	struct hash_table* table;
 	printk("Creating a new tagfs hash table\n");
 	table = create_table();
@@ -191,9 +202,4 @@ static int __init init_test(void) {
 	return 0;
 }
 
-static void  __exit exit_test(void) {
-	printk("Unloading testing module of tagfs\n");
-}
 
-module_init(init_test)
-module_exit(exit_test)
