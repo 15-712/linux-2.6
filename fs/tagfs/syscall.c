@@ -43,7 +43,7 @@ int addtag(const char __user *filename, const char __user *tag) {
 			strncpy(ent->filename, file, MAX_FILENAME_LEN);
 			ent->count = 0;
 		}
-		ret = insert(table, t, ent);
+		ret = table_insert(table, t, ent);
 		if (ret) {
 			/*TODO: Clean up, may not be memory error, need 
 			  to check return value*/
@@ -105,7 +105,7 @@ int addtag(const char __user *filename, const char __user *tag) {
 	} else {
 		ent = find_entry(check, ino->i_ino);
 	}
-	ret = insert(table, t, ent);
+	ret = table_insert(table, t, ent);
 	if (ret) {
 		ret = -ENOMEM;
 		/*TODO: Clean up, may not be memory error, need 
