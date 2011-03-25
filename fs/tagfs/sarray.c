@@ -58,7 +58,6 @@ static int insert_end(struct table_element *e, struct inode_entry *entry)
 		e->entries = new_ptr;
 	}
 	e->entries[e->count++] = entry;
-	entry->count++;
 	return 0;
 }
 

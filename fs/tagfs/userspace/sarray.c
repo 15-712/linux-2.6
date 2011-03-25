@@ -43,10 +43,10 @@ struct table_element *new_element()
 }
 
 void delete_element(struct table_element *e) {
-  if (e) {
-  	kfree(e->entries);
-	kfree(e);
-  }
+	if (e) {
+		kfree(e->entries);
+		kfree(e);
+	}
 }
 
 /** @brief inserts to the end of the array
@@ -64,7 +64,6 @@ static int insert_end(struct table_element *e, struct inode_entry *entry)
 		e->entries = new_ptr;
 	}
 	e->entries[e->count++] = entry;
-	entry->count++;
 	return 0;
 }
 
