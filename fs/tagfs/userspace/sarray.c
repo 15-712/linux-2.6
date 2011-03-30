@@ -24,7 +24,8 @@ static const unsigned int StartCapacity = 10;
 struct table_element {
 	struct inode_entry **entries;
 	unsigned int count;
-	unsigned int capacity;	
+	unsigned int capacity;
+	int readonly;
 };
 
 struct table_element *new_element() 
@@ -32,13 +33,14 @@ struct table_element *new_element()
 	struct table_element *e = kmalloc(sizeof(struct table_element), GFP_KERNEL);
 	if (!e)
 		return e;
-	e->count = 0;
-	e->capacity = StartCapacity;
-	e->entries = kmalloc(sizeof(struct inode_entry *) * e->capacity, GFP_KERNEL);
+	e->entries = kmalloc(sizeof(struct inode_entry *) * StartCapacity, GFP_KERNEL);
 	if (!e->entries) {
 		kfree(e);
 		return NULL;
 	}
+	e->readonly = 0;
+	e->capacity = StartCapacity;
+	e->count = 0;
 	return e;
 }
 
@@ -72,6 +74,8 @@ int insert_entry(struct table_element *e, struct inode_entry *entry)
 	unsigned int i, index;
 	if (!e)
 		return INVALID_ELEMENT;
+	if (e->readonly)
+		return READ_ONLY;
 	if (e->count == e->capacity) {
 		struct inode_entry **new_ptr = krealloc(e->entries, sizeof(void *) * e->capacity << 1, GFP_KERNEL);
 		if (!new_ptr)
@@ -94,10 +98,12 @@ int insert_entry(struct table_element *e, struct inode_entry *entry)
 	return 0;
 }
 
-void remove_entry(struct table_element *e, unsigned long ino) {
+int remove_entry(struct table_element *e, unsigned long ino) {
 	unsigned int i;
 	if (!e)
-		return;
+		return INVALID_ELEMENT;
+	if (e->readonly)
+		return READ_ONLY;
 	for (i = 0; i < e->count; i++) {
 		if (e->entries[i]->ino == ino) {
 			e->entries[i]->count--;
@@ -157,6 +163,7 @@ struct table_element *set_union(struct table_element *e1, struct table_element *
 			}
 		}
 	}
+	result->readonly = 1;
 	return result;
 fail:
 	if (result)
@@ -186,11 +193,12 @@ struct table_element *set_intersect(struct table_element *e1, struct table_eleme
 		}
 
 	}
+	result->readonly = 1;
 	return result;
 }
 
-struct inode_entry **set_to_array(struct table_element *e) {
-	return e->entries;
+const struct inode_entry **set_to_array(struct table_element *e) {
+	return (const struct inode_entry **)e->entries;
 }
 
 unsigned int size(struct table_element *e) {

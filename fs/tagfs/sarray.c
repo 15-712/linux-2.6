@@ -27,7 +27,7 @@ struct table_element *new_element()
 	struct table_element *e = kmalloc(sizeof(struct table_element), GFP_KERNEL);
 	if (!e)
 		return e;
-	e->entries = kmalloc(sizeof(struct inode_entry *) * e->capacity, GFP_KERNEL);
+	e->entries = kmalloc(sizeof(struct inode_entry *) * StartCapacity, GFP_KERNEL);
 	if (!e->entries) {
 		kfree(e);
 		return NULL;
