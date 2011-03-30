@@ -36,14 +36,51 @@
 int null_addtag(const char __user *a, const char __user *b) {
 	return -ENOSYS;
 }
+int null_rmtag(const char __user *a, const char __user *b) {
+	return -ENOSYS;
+}
+int null_chtag(const char __user *a) {
+	return -ENOSYS;
+}
+int null_mvtag(const char __user *a, const char __user *b) {
+	return -ENOSYS;
+}
+/*
+TODO: Figure out parameters
+int null_lstag(const char __user *a) {
+	return -ENOSYS;
+}
+int null_pwt(const char __user **a) {
+	return -ENOSYS;
+}
+int null_tagopen(const char __user *a, int flags) {
+	return -ENOSYS;
+}
+int null_distag(const char __user *a) {
+	return -ENOSYS;
+}*/
 
 int (*addtag_ptr)(const char __user *, const char __user *) = null_addtag;
+int (*rmtag_ptr)(const char __user *, const char __user *) = null_rmtag;
+int (*chtag_ptr)(const char __user *) = null_chtag;
+int (*mvtag_ptr)(const char __user *, const char __user *) = null_mvtag;
 
-EXPORT_SYMBOL(null_addtag);
 EXPORT_SYMBOL(addtag_ptr);
+EXPORT_SYMBOL(rmtag_ptr);
+EXPORT_SYMBOL(chtag_ptr);
+EXPORT_SYMBOL(mvtag_ptr);
 
 SYSCALL_DEFINE2(addtag, const char __user *, name, const char __user *, tag) {
 	return addtag_ptr(name, tag);
+}
+SYSCALL_DEFINE2(rmtag, const char __user *, name, const char __user *, tag) {
+	return rmtag_ptr(name, tag);
+}
+SYSCALL_DEFINE1(chtag, const char __user *, tagex) {
+	return chtag_ptr(tagex);
+}
+SYSCALL_DEFINE2(mvtag, const char __user *, tag1, const char __user *, tag2) {
+	return mvtag_ptr(tag1, tag2);
 }
 
 int do_truncate(struct dentry *dentry, loff_t length, unsigned int time_attrs,

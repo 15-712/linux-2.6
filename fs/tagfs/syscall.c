@@ -4,6 +4,12 @@
 #include "syscall.h"
 #include "table.h"
 
+char cwt[MAX_TAGEX_LEN];
+int (*prev_addtag)(const char __user *, const char __user *);
+int (*prev_rmtag)(const char __user *, const char __user *);
+int (*prev_chtag)(const char __user *);
+int (*prev_mvtag)(const char __user *, const char __user *);
+
 
 int addtag(const char __user *filename, const char __user *tag) {
 	char *file, *t;
