@@ -1,5 +1,6 @@
 
 #include "table.h"
+#include "expr.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -79,7 +80,7 @@ static void test1(struct hash_table *table, int verbose) {
 }
 
 static void test2(struct hash_table *table, int verbose) {
-	struct inode_entry* entry;
+	struct inode_entry* entry; 
 	struct table_element *element1;
 	struct table_element *element2;
 	struct table_element *result;
@@ -119,8 +120,7 @@ static void test2(struct hash_table *table, int verbose) {
 
 	if(verbose) printk("Getting tag 'letter'\n");	
 	element1 = get_inodes(table, "letter");
-	if(!element1) {
-		printk("ERROR: Unable to find entries for tag 'letter'\n");
+	if(!element1) { printk("ERROR: Unable to find entries for tag 'letter'\n");
 	} else {
 		if(verbose) printk("Found %i entries with tag 'letter'\n", size(element1));
 		if(size(element1) != 2)
@@ -187,7 +187,45 @@ static void test2(struct hash_table *table, int verbose) {
 	printk("Finished test #2\n");
 }
 
+static void test3(struct hash_table *table, int verbose) {
+	struct inode_entry* entry; 
+	struct table_element *result;
+	struct expr_tree *tree;
+	printk("Running test #3: \n");
 
+	/* Create & insert inode a with tag 'a'*/
+	if(verbose) printk("Creating inode 'a' with number 100\n");
+	entry = create_entry("a", 100);
+	if(verbose) printk("Tagging inode 100 with 'a'\n");
+	insert_inode(table, "a", entry);
+
+	/* Create & insert inode a with tag 'b'*/
+	if(verbose) printk("Creating inode 'b' with number 101\n");
+	entry = create_entry("b", 101);
+	if(verbose) printk("Tagging inode 101 with 'b'\n");
+	insert_inode(table, "b", entry);
+
+	/* Create & insert inode a with tag 'c'*/
+	if(verbose) printk("Creating inode 'c' with number 102\n");
+	entry = create_entry("c", 102);
+	if(verbose) printk("Tagging inode 102 with 'c'\n");
+	insert_inode(table, "c", entry);
+
+	tree = parse_expr("a | (b & c)");
+	if(!tree)
+		printf("Invalid tree structure\n");
+	else {
+		printTree(tree);
+		result = parse_tree(tree, table);
+		printk("Expression retuned %i results.\n", size(result));
+		free_tree(tree);
+	}
+
+	delete_element(result);
+	table_remove(table, "a", 100);
+	table_remove(table, "b", 101);
+	table_remove(table, "c", 102);
+}
 
 int main(void) {
 	struct hash_table* table;
@@ -197,6 +235,7 @@ int main(void) {
 	printk("Initializing unit testing of tagfs\n");
 	test1(table, 1);
 	test2(table, 1);
+	test3(table, 1);
 	
 	destroy_table(table); 
 	return 0;
