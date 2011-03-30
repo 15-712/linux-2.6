@@ -15,7 +15,8 @@ int addtag(const char __user *filename, const char __user *tag) {
 	char *file, *t;
 	int *tag_ids = NULL;
 	struct table_element *curr, *check;
-	struct inode_entry *ent, **entries;
+	struct inode_entry *ent;
+	const struct inode_entry **entries;
 	struct inode *ino = NULL;
 	int i, ret, num_tags = 0, conflict, min;
 

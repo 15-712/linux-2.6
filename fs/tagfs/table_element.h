@@ -27,7 +27,7 @@ struct inode_entry {
 /* Insert an inode entry into the table_element */
 int insert_entry(struct table_element *, struct inode_entry *);
 /* Remove an entry from a table_element based on inode number */
-void remove_entry(struct table_element *, unsigned long);
+int remove_entry(struct table_element *, unsigned long);
 /* Returns a table_element representing the union of the entries of two table_elements */
 struct table_element *set_union(struct table_element *, struct table_element *);
 /* Returns a table element representing the intersection of the entries of two table elements */
@@ -37,7 +37,7 @@ struct table_element *new_element(void);
 /* Frees all memory associated with the table_element */
 void delete_element(struct table_element *);
 /* Returns the set of entries as an array */
-struct inode_entry **set_to_array(struct table_element *);
+const struct inode_entry **set_to_array(struct table_element *);
 /* Returns the number of entrices in the table element */
 unsigned int size(struct table_element *);
 
