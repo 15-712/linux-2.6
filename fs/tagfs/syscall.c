@@ -5,6 +5,8 @@
 #include "table.h"
 
 char cwt[MAX_TAGEX_LEN+1];
+struct expr_tree *tree = NULL;
+
 int (*prev_addtag)(const char __user *, const char __user *);
 int (*prev_rmtag)(const char __user *, const char __user *);
 int (*prev_chtag)(const char __user *);
@@ -210,14 +212,39 @@ end:
 
 int chtag(const char __user *tagex) {
 	char *ktagex = getname(tagex);
-	if (IS_ERR(ktagex))
-		return -ENOMEM;
-	//TODO: Check the validity of the tag expression
-	if (strlen(ktagex) > MAX_TAGEX_LEN)
-		return -EINVAL;
+	struct expr_tree *new_tree;
+	int len, ret = 0;
+	if (IS_ERR(ktagex)) {
+		ret = -ENOMEM;
+		goto end;
+	}
+	len = strlen(ktagex);
+	if (strlen(ktagex) > MAX_TAGEX_LEN) {
+		ret = -EINVAL;
+		goto clean_up;
+	}
+	if (len == 0) {
+		cwt[0] = '\0';
+		free_tree(tree);
+		tree = NULL;
+		goto clean_up;
+	}
+
+	if (!(new_tree = build_tree(tagex))) {
+		/* TODO: need some way to check if the expression
+		 *       has an error or a memory error occurred
+		 */
+		ret = -EINVAL;
+		goto clean_up;
+	}
 	strcpy(cwt, ktagex);
+	if (tree)
+		free_tree(tree);
+	tree = new_tree;
+clean_up:
 	putname(ktagex);
-	return 0;
+end:
+	return ret;
 }
 
 int mvtag(const char __user *tag1, const char __user *tag2) {
