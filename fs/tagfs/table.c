@@ -340,3 +340,27 @@ void destroy_table(struct hash_table *table) {
 const char *get_tag(struct hash_table *table, int id) {
 	return table->lookup_table->tag + id * MAX_TAG_LEN;
 }
+
+int change_tag(struct hash_table *table, char *tag1, char *tag2) {
+	struct tag_node *node, *prev;
+	unsigned long hash1, hash2;
+	if (find_node(table, tag2))
+		return -EINVAL;
+	hash1 = hash_tag(tag1);
+	prev = NULL;
+	node = table->table[hash1];
+	while(node != NULL && strncmp(node->tag, tag1, MAX_TAG_LEN) != 0) {
+		prev = node;
+		node = node->next;
+	}
+	if (!node)
+		return -EINVAL;
+	if (prev)
+		prev->next = node->next;
+	else
+		table->table[hash1] = node->next;
+	hash2 = hash_tag(tag2);
+	node->next = table->table[hash2];
+	table->table[hash2] = node;
+	return 0;
+}

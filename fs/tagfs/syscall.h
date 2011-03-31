@@ -3,7 +3,7 @@
 
 #define MAX_TAGEX_LEN 255
 
-extern char cwt[MAX_TAGEX_LEN];
+extern char cwt[MAX_TAGEX_LEN+1];
 extern int (*prev_addtag)(const char __user *, const char __user *);
 extern int (*prev_rmtag)(const char __user *, const char __user *);
 extern int (*prev_chtag)(const char __user *);
