@@ -3,7 +3,7 @@
 #
 ifneq (${KERNELRELEASE},)
 obj-m += tagfs.o
-tagfs-objs += inode.o sarray.o table.o syscall.o
+tagfs-objs += inode.o sarray.o table.o syscall.o expr.o
 obj-m += testfs.o
 testfs-objs += test.o sarray.o table.o
 else
