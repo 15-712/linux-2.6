@@ -361,6 +361,8 @@ int change_tag(struct hash_table *table, char *tag1, char *tag2) {
 		table->table[hash1] = node->next;
 	hash2 = hash_tag(tag2);
 	node->next = table->table[hash2];
+	strlcpy(node->tag, tag2, MAX_TAG_LEN);
+	strlcpy(&(table->lookup_table->tag[node->tag_id*MAX_TAG_LEN]), tag2, MAX_TAG_LEN);
 	table->table[hash2] = node;
 	return 0;
 }
