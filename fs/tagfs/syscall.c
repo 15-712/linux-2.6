@@ -11,7 +11,8 @@ int (*prev_addtag)(const char __user *, const char __user *);
 int (*prev_rmtag)(const char __user *, const char __user *);
 int (*prev_chtag)(const char __user *);
 int (*prev_mvtag)(const char __user *, const char __user *);
-
+int (*prev_getcwt)(const char __user *, unsigned long size);
+int (*prev_lstag)(const char __user *, char __user *, unsigned long, unsigned long);
 
 int addtag(const char __user *filename, const char __user *tag) {
 	char *file, *t;
@@ -277,10 +278,11 @@ int getcwt(char __user *buf, unsigned long size) {
 	return error;
 }
 
-int lstag(const char __user *expr, char __user *buf, unsigned long size, unsigned long offset) {
+int lstag(const char __user *expr, struct inode_entry __user *buf, unsigned long size, unsigned long offset) {
 	struct expr_tree *tree;
 	struct table_element *results;
 	char *kexpr = getname(expr);
+	unsigned int i;
 	
 	if (IS_ERR(kexpr))
 		return -ENOMEM;
@@ -289,6 +291,13 @@ int lstag(const char __user *expr, char __user *buf, unsigned long size, unsigne
 		return -EINVAL;
 	results = parse_tree(tree);
 	/* Do some parsing of the results and format it for the buffer */
-	
+	int len = size(results);
+	if(len == 0)
+		return -EINVAL;
+	struct inode_entry **inodes = set_to_array(results);
+	for(i = offset; i < offset+size && i < len; i++) {
+		copy_to_user(&buf[i-offset], inodes[i], sizeof(struct inode_entry));
+	}
+	return max(i-offset, 0);
 }
 
