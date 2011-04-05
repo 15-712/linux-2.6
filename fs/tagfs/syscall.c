@@ -263,3 +263,32 @@ int mvtag(const char __user *tag1, const char __user *tag2) {
 	putname(kt1);
 	return ret;
 }
+
+int getcwt(char __user *buf, unsigned long size) {
+	/* Why does getcwd (fs/dcache.c:2767) seem so complicated? */
+	int error = -ERANGE;
+	unsigned long len = strlen(cwt);
+	if (len <= size) {
+		error = len;
+		if(copy_to_user(buf, cwt, len))
+			error = -EFAULT;
+	}
+
+	return error;
+}
+
+int lstag(const char __user *expr, char __user *buf, unsigned long size, unsigned long offset) {
+	struct expr_tree *tree;
+	struct table_element *results;
+	char *kexpr = getname(expr);
+	
+	if (IS_ERR(kexpr))
+		return -ENOMEM;
+	tree = build_tree(expr);
+	if(!tree)
+		return -EINVAL;
+	results = parse_tree(tree);
+	/* Do some parsing of the results and format it for the buffer */
+	
+}
+
