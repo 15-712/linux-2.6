@@ -196,7 +196,7 @@ const struct inode_entry **set_to_array(struct table_element *e) {
 	return (const struct inode_entry **) e->entries;
 }
 
-unsigned int size(struct table_element *e) {
+unsigned int element_size(struct table_element *e) {
 	return e->count;
 }
 

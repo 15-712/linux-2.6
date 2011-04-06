@@ -45,14 +45,14 @@ int null_chtag(const char __user *a) {
 int null_mvtag(const char __user *a, const char __user *b) {
 	return -ENOSYS;
 }
+int null_lstag(const char __user *a, void __user *b, unsigned long c, int d) {
+	return -ENOSYS;
+}
+int null_getcwt(char __user *a, unsigned long size) {
+	return -ENOSYS;
+}
 /*
 TODO: Figure out parameters
-int null_lstag(const char __user *a) {
-	return -ENOSYS;
-}
-int null_pwt(const char __user **a) {
-	return -ENOSYS;
-}
 int null_tagopen(const char __user *a, int flags) {
 	return -ENOSYS;
 }
@@ -64,11 +64,15 @@ int (*addtag_ptr)(const char __user *, const char __user *) = null_addtag;
 int (*rmtag_ptr)(const char __user *, const char __user *) = null_rmtag;
 int (*chtag_ptr)(const char __user *) = null_chtag;
 int (*mvtag_ptr)(const char __user *, const char __user *) = null_mvtag;
+int (*lstag_ptr)(const char __user *, void __user *, unsigned long, int) = null_lstag;
+int (*getcwt_ptr)(char __user *, unsigned long) = null_getcwt;
 
 EXPORT_SYMBOL(addtag_ptr);
 EXPORT_SYMBOL(rmtag_ptr);
 EXPORT_SYMBOL(chtag_ptr);
 EXPORT_SYMBOL(mvtag_ptr);
+EXPORT_SYMBOL(lstag_ptr);
+EXPORT_SYMBOL(getcwt_ptr);
 
 SYSCALL_DEFINE2(addtag, const char __user *, name, const char __user *, tag) {
 	return addtag_ptr(name, tag);

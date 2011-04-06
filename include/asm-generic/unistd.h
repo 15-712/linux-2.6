@@ -644,8 +644,8 @@ __SYSCALL(__NR_addtag, sys_addtag)
 #define __NR_rmtag 245
 #define __NR_lstag 246
 #define __NR_chtag 247
-#define __NR_pwt 248
-#define __NR_tagopen 249
+#define __NR_getcwt 248
+#define __NR_opentag 249
 #define __NR_mvtag 250
 #define __NR_distag 251
 
