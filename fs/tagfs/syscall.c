@@ -338,3 +338,17 @@ end:
 	return error;
 }
 
+int distag(char __user *filename, char __user *buf, unsigned int size) {
+	char *file;
+	int ret = 0;
+
+	file = getname(filename);
+	if (IS_ERR(file)) {
+		ret = PTR_ERR(file);
+		goto fail_file;
+	}
+	
+	putname(file);	
+fail_file:
+	return ret;
+}
