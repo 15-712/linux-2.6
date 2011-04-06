@@ -200,7 +200,7 @@ int table_remove(struct hash_table *table, const char *tag, unsigned long inode_
 	node = find_node(table, tag);
 	if(node) {
 		remove_entry(node->e, inode_num);
-		if(size(node->e) == 0) {
+		if(element_size(node->e) == 0) {
 
 			/* decrement tag count */
 			table->num_tags--;

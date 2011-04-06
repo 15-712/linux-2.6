@@ -7,10 +7,13 @@
 
 extern char cwt[MAX_TAGEX_LEN+1];
 extern struct expr_tree *tree;
-extern int (*prev_addtag)(const char __user *, const char __user *);
-extern int (*prev_rmtag)(const char __user *, const char __user *);
-extern int (*prev_chtag)(const char __user *);
-extern int (*prev_mvtag)(const char __user *, const char __user *);
 
 int addtag(const char __user *, const char __user *);
+int rmtag(const char __user *, const char __user *);
+int chtag(const char __user *);
+int mvtag(const char __user *, const char __user *);
+int getcwt(char __user *, unsigned long);
+int lstag(const char __user *, void __user *, unsigned long, int);
+void install_syscalls(void);
+void uninstall_syscalls(void);
 #endif

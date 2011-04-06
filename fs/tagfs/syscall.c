@@ -1,5 +1,6 @@
 #include <linux/fs.h>
 #include <linux/slab.h>
+#include <asm/uaccess.h>
 
 #include "syscall.h"
 #include "table.h"
@@ -13,8 +14,33 @@ int (*prev_addtag)(const char __user *, const char __user *);
 int (*prev_rmtag)(const char __user *, const char __user *);
 int (*prev_chtag)(const char __user *);
 int (*prev_mvtag)(const char __user *, const char __user *);
-int (*prev_getcwt)(const char __user *, unsigned long size);
-int (*prev_lstag)(const char __user *, char __user *, unsigned long, unsigned long);
+int (*prev_getcwt)(char __user *, unsigned long size);
+int (*prev_lstag)(const char __user *, void __user *, unsigned long, int);
+
+void install_syscalls(void) {
+	prev_addtag = addtag_ptr;
+	prev_rmtag = rmtag_ptr;
+	prev_chtag = chtag_ptr;
+	prev_mvtag = mvtag_ptr;
+	prev_getcwt = getcwt_ptr;
+	prev_lstag = lstag_ptr;
+	addtag_ptr = addtag;
+	rmtag_ptr = rmtag;
+	chtag_ptr = chtag;
+	mvtag_ptr = mvtag;
+	getcwt_ptr = getcwt;
+	lstag_ptr = lstag;
+}
+
+void uninstall_syscalls(void) {
+	addtag_ptr = prev_addtag;
+	rmtag_ptr = prev_rmtag;
+	chtag_ptr = prev_chtag;
+	mvtag_ptr = prev_mvtag;
+	getcwt_ptr = prev_getcwt;
+	lstag_ptr = prev_lstag;
+}
+
 
 int addtag(const char __user *filename, const char __user *tag) {
 	char *file, *t;
@@ -98,14 +124,14 @@ int addtag(const char __user *filename, const char __user *tag) {
 			ret = -ENOMEM;
 			goto fail;
 		}
-		if (!check || size(temp) < min) {
+		if (!check || element_size(temp) < min) {
 			check = temp;
-			min = size(temp);
+			min = element_size(temp);
 		}
 	}
 	entries = set_to_array(curr);
 	conflict = 0;
-	for(i = 0; i < size(curr); i++) {
+	for(i = 0; i < element_size(curr); i++) {
 		if (entries[i]->count == num_tags + 1 && strncmp(entries[i]->filename, file, MAX_FILENAME_LEN)) {
 			conflict = 1;
 			break;
@@ -201,7 +227,7 @@ int rmtag(const char __user *filename, const char __user *tag) {
 		}
 		entries = set_to_array(curr);
 		conflict = 0;
-		for(i = 0; i < size(curr); i++)
+		for(i = 0; i < element_size(curr); i++)
 			if (entries[i]->count == num_tags - 1 && strncmp(entries[i]->filename, file, MAX_FILENAME_LEN)) {
 				conflict = 1;
 				break;
@@ -290,9 +316,10 @@ int getcwt(char __user *buf, unsigned long size) {
 	return error;
 }
 
-int lstag(const char __user *expr, struct inode_entry __user *buf, unsigned long size, unsigned long offset) {
+int lstag(const char __user *expr, void __user *buf, unsigned long size, int offset) {
 	struct expr_tree *tree;
 	struct table_element *results;
+	const struct inode_entry **inodes;
 	char *kexpr = getname(expr);
 	char *full_expr = NULL;
 	unsigned int i;
@@ -319,15 +346,15 @@ int lstag(const char __user *expr, struct inode_entry __user *buf, unsigned long
 		
 	results = parse_tree(tree, table);
 
-	len = size(results);
+	len = element_size(results);
 	if(len == 0)
 		goto end;
 
 	/* Copy to user space */
 	error = -EFAULT;
-	struct inode_entry **inodes = set_to_array(results);
+	inodes = set_to_array(results);
 	for(i = offset; i < offset+size && i < len; i++) {
-		if(copy_to_user(&buf[i-offset], inodes[i], sizeof(struct inode_entry)))
+		if(copy_to_user(&((struct inode_entry *)buf)[i-offset], inodes[i], sizeof(struct inode_entry)))
 			goto end;
 	}
 	error = max(i-offset, 0);

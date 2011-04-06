@@ -2316,8 +2316,12 @@ extern loff_t generic_file_llseek_unlocked(struct file *file, loff_t offset,
 extern int generic_file_open(struct inode * inode, struct file * filp);
 extern int nonseekable_open(struct inode * inode, struct file * filp);
 
-extern int null_addtag(const char __user *filename, const char __user *tag);
 extern int (*addtag_ptr)(const char __user *filename, const char __user *tag);
+extern int (*rmtag_ptr)(const char __user *filename, const char __user *tag);
+extern int (*chtag_ptr)(const char __user *tagex);
+extern int (*mvtag_ptr)(const char __user *tag1, const char __user *tag2);
+extern int (*lstag_ptr)(const char __user *tagex, void __user *buf, unsigned long size, int offset);
+extern int (*getcwt_ptr)(char __user *buf, unsigned long size);
 
 #ifdef CONFIG_FS_XIP
 extern ssize_t xip_file_read(struct file *filp, char __user *buf, size_t len,

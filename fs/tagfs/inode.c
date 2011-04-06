@@ -270,15 +270,6 @@ static struct file_system_type tagfs_fs_type = {
 	.kill_sb 	= tagfs_kill_sb,
 };
 
-static void install_syscalls(void) {
-	prev_addtag = addtag_ptr;
-	addtag_ptr = addtag;
-}
-
-static void uninstall_syscalls(void) {
-	addtag_ptr = prev_addtag;
-}
-
 static int __init init_tagfs_fs(void)
 {
 	printk("Loading tagfs kernel module\n");

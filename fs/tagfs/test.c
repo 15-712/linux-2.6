@@ -46,7 +46,7 @@ static void test1(struct hash_table *table, int verbose) {
 	if(!element) {
 		printk("ERROR: Unable to find any entries\n");
 	} else {
-		if(verbose) printk("Found %i entries with tag 'letters'\n", size(element));
+		if(verbose) printk("Found %i entries with tag 'letters'\n", element_size(element));
 	}
 
 	if(verbose) printk("Removing inode 'a' from table\n");
@@ -59,7 +59,7 @@ static void test1(struct hash_table *table, int verbose) {
 	if(verbose) printk("verifying that all inodes with tag 'letters' have been removed.\n");
 	element = get_inodes(table, "letters");
 	if(element) {
-		printk("ERROR: Found %i entries with tag 'letters'. Expected none.\n", size(element));
+		printk("ERROR: Found %i entries with tag 'letters'. Expected none.\n", element_size(element));
 	} else {
         	if(verbose) printk("Element has been successfully removed.\n");
 	}
@@ -111,9 +111,9 @@ static void test2(struct hash_table *table, int verbose) {
 	if(!element1) {
 		printk("ERROR: Unable to find entries for tag 'letter'\n");
 	} else {
-		if(verbose) printk("Found %i entries with tag 'letter'\n", size(element1));
-		if(size(element1) != 2)
-			printk("ERROR: Expected 2 entries with tag 'letter', found %i\n", size(element1));
+		if(verbose) printk("Found %i entries with tag 'letter'\n", element_size(element1));
+		if(element_size(element1) != 2)
+			printk("ERROR: Expected 2 entries with tag 'letter', found %i\n", element_size(element1));
 	}
 
 	if(verbose) printk("Getting tag 'number'\n");	
@@ -121,9 +121,9 @@ static void test2(struct hash_table *table, int verbose) {
 	if(!element1) {
 		printk("ERROR: Unable to find entries for tag 'number'\n");
 	} else {
-		if(verbose) printk("Found %i entries with tag 'number'\n", size(element1));
-		if(size(element1) != 2)
-			printk("ERROR: Expected 2 entries with tag 'number', found %i\n", size(element1));
+		if(verbose) printk("Found %i entries with tag 'number'\n", element_size(element1));
+		if(element_size(element1) != 2)
+			printk("ERROR: Expected 2 entries with tag 'number', found %i\n", element_size(element1));
 	}
 
 	if(verbose) printk("Getting tag 'first'\n");	
@@ -131,9 +131,9 @@ static void test2(struct hash_table *table, int verbose) {
 	if(!element2) {
 		printk("ERROR: Unable to find entries for tag 'first'\n");
 	} else {
-		if(verbose) printk("Found %i entries with tag 'first'\n", size(element2));
-		if(size(element2) != 2)
-			printk("ERROR: Expected 2 entries with tag 'first', found %i\n", size(element2));
+		if(verbose) printk("Found %i entries with tag 'first'\n", element_size(element2));
+		if(element_size(element2) != 2)
+			printk("ERROR: Expected 2 entries with tag 'first', found %i\n", element_size(element2));
 	}
 
 	/* Intersection */
@@ -143,7 +143,7 @@ static void test2(struct hash_table *table, int verbose) {
 		printk("ERROR: Unable to perform intersection\n");
 
 	if(verbose) printk("Verifying that we got inode #201\n");
-	if(size(result) != 1)
+	if(element_size(result) != 1)
 		printk("ERROR: Intersection returned too many results.\n");
 	else
 		printk("Successfully recovered inode #%i\n", (int)set_to_array(result)[0]->ino);
@@ -156,8 +156,8 @@ static void test2(struct hash_table *table, int verbose) {
 		printk("ERROR: Unable to perform union\n");
 
 	if(verbose) printk("Verifying that we got 3 results\n");
-	if(size(result) != 3)
-		printk("ERROR: Untion returned an incorrect number of results. Found %i, expected 3.\n", size(result));
+	if(element_size(result) != 3)
+		printk("ERROR: Untion returned an incorrect number of results. Found %i, expected 3.\n", element_size(result));
 	else
 		printk("Successfully recovered 3 results.\n");
 	delete_element(result);
