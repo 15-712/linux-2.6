@@ -7,6 +7,8 @@
 char cwt[MAX_TAGEX_LEN+1];
 struct expr_tree *tree = NULL;
 
+static char inv[] = {'.', '&', '|', '/'};
+
 int (*prev_addtag)(const char __user *, const char __user *);
 int (*prev_rmtag)(const char __user *, const char __user *);
 int (*prev_chtag)(const char __user *);
@@ -21,7 +23,7 @@ int addtag(const char __user *filename, const char __user *tag) {
 	struct inode_entry *ent;
 	const struct inode_entry **entries;
 	struct inode *ino = NULL;
-	int i, ret = 0, num_tags = 0, conflict, min;
+	int i, ret = 0, num_tags = 0, conflict, min, len;
 
 	file = getname(filename);
 	if (IS_ERR(file)) {
@@ -32,6 +34,16 @@ int addtag(const char __user *filename, const char __user *tag) {
 	if (IS_ERR(t)) {
 		ret = PTR_ERR(t);
 		goto fail_tag;
+	}
+	len = strlen(t);
+	for (i = 0; i < len; i++) {
+		int j;
+		for (j = 0; sizeof(inv) / sizeof(char); j++) {
+			if (t[i] == inv[j]) {
+				ret = -EINVAL;
+				goto fail_tag;
+			}
+		}
 	}
 	//TODO: ino <- Get inode
 	//TODO: tag_ids <- Get tags from inode
