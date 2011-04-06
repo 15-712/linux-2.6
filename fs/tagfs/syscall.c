@@ -294,35 +294,47 @@ int lstag(const char __user *expr, struct inode_entry __user *buf, unsigned long
 	struct expr_tree *tree;
 	struct table_element *results;
 	char *kexpr = getname(expr);
-	char *full_expr;
+	char *full_expr = NULL;
 	unsigned int i;
 	unsigned int len;
+	int error;
 	
+	error = -ENOMEM;
 	if (IS_ERR(kexpr))
-		return -ENOMEM;
+		goto end;
 
 	/* If expr starts with a '.' then prepend cwt to expr */
 	len = strlen(cwt) + strlen(kexpr);	
 	full_expr = kmalloc(sizeof(char) * len, GFP_KERNEL);
+	if(!full_expr)
+		goto end;
 	len = strlcpy(full_expr, cwt, MAX_TAGEX_LEN);
 	strlcpy(&full_expr[len], &expr[1], MAX_TAGEX_LEN-len);
 
 	/* Build tree */
+	error = -EINVAL;
 	tree = build_tree(full_expr);
 	if(!tree)
-		return -EINVAL;
+		goto end;
+		
 	results = parse_tree(tree, table);
 
-	int len = size(results);
+	len = size(results);
 	if(len == 0)
-		return -EINVAL;
+		goto end;
 
 	/* Copy to user space */
+	error = -EFAULT;
 	struct inode_entry **inodes = set_to_array(results);
 	for(i = offset; i < offset+size && i < len; i++) {
 		if(copy_to_user(&buf[i-offset], inodes[i], sizeof(struct inode_entry)))
-			return -EFAULT;
+			goto end;
 	}
-	return max(i-offset, 0);
+	error = max(i-offset, 0);
+end:
+	putname(kexpr);
+	if(full_expr)
+		kfree(full_expr);
+	return error;
 }
 
