@@ -967,6 +967,44 @@ long do_sys_open(int dfd, const char __user *filename, int flags, int mode)
 	return fd;
 }
 
+long do_sys_opentag(const char __user *tagexp, int flags)
+{
+        char *tmp = getname(tagexp);
+        int fd = PTR_ERR(tmp);
+
+        // checks flags
+        if ((flags != O_RDONLY) && (flags != O_WRONLY) && (flags != O_RDWR))
+                return -EINVAL;
+
+        // gets inode number
+        struct expr_tree *e = build_tree(tag_exp);
+        if (e == NULL)
+                return -EINVAL;
+        struct table_element *t = parse_tree(e);
+        if (t == NULL)
+                return -EINVAL;
+        if (element_size(t) != 1)
+                return -EMFILE;  // too many open files
+
+        unsigned long ino = set_to_array(t)[0]->ino;
+
+        if ((!IS_ERR(tmp)) || (ino > 0)) {
+                fd = get_unused_fd_flags(flags);
+                if (fd >= 0) {
+                        struct file *f = do_filp_opentag(ino, flags, 0);
+                        if (IS_ERR(f)) {
+                                put_unused_fd(fd);
+                                fd = PTR_ERR(f);
+                        } else {
+                                fsnotify_open(f);
+                                fd_install(fd, f);
+                        }
+                }
+                putname(tmp);
+        }
+        return fd;
+}
+
 SYSCALL_DEFINE3(open, const char __user *, filename, int, flags, int, mode)
 {
 	long ret;

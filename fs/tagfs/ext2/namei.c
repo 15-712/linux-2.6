@@ -63,7 +63,12 @@ static struct dentry *ext2_lookup(struct inode * dir, struct dentry *dentry, str
 	if (dentry->d_name.len > EXT2_NAME_LEN)
 		return ERR_PTR(-ENAMETOOLONG);
 
-	ino = ext2_inode_by_name(dir, &dentry->d_name);
+        if (dentry->d_name->name[0] == '/') {  // hacking!!!
+                ino = (ino_t) nd;
+        } else {
+                ino = ext2_inode_by_name(dir, &dentry->d_name);
+        }
+
 	inode = NULL;
 	if (ino) {
 		inode = ext2_iget(dir->i_sb, ino);

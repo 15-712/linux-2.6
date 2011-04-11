@@ -1924,7 +1924,7 @@ struct dentry *__d_lookup(struct dentry *parent, struct qstr *name)
 		 */
 		tlen = dentry->d_name.len;
 		tname = dentry->d_name.name;
-		if (parent->d_flags & DCACHE_OP_COMPARE) {
+		if ((parent) && (parent->d_flags & DCACHE_OP_COMPARE)) {  // hacking!!!
 			if (parent->d_op->d_compare(parent, parent->d_inode,
 						dentry, dentry->d_inode,
 						tlen, tname, name))

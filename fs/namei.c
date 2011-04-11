@@ -1206,6 +1206,30 @@ static struct dentry *d_alloc_and_lookup(struct dentry *parent,
 	return dentry;
 }
 
+static struct dentry *d_alloc_and_lookuptag(struct dentry *parent, struct qstr *name, unsigned long ino)
+{
+        struct inode *inode;
+        struct dentry *dentry;
+        struct dentry *old;
+
+        inode = parent->d_inode;
+
+        /* Don't create child dentry for a dead directory. */
+        if (unlikely(IS_DEADDIR(inode)))
+                return ERR_PTR(-ENOENT);
+
+        dentry = d_alloc(NULL, name);
+        if (unlikely(!dentry))
+                return ERR_PTR(-ENOMEM);
+
+        old = inode->i_op->lookup(inode, dentry, ino);
+        if (unlikely(old)) {
+                dput(dentry);
+                dentry = old;
+        }
+        return dentry;
+}
+
 /*
  *  It's more convoluted than I'd like it to be, but... it's still fairly
  *  small and for now I'd prefer to have fast path as straight as possible.
@@ -1320,6 +1344,124 @@ need_lookup:
 
 fail:
 	return PTR_ERR(dentry);
+}
+
+static int do_lookuptag(struct nameidata *nd, struct qstr *name, unsigned long ino, struct path *path)
+{
+        struct vfsmount *mnt = nd->path.mnt;
+        struct dentry *dentry, *parent = nd->path.dentry;
+        //struct inode *dir;
+        //int err;
+
+        //
+        // See if the low-level filesystem might want
+        // to use its own hash..
+        //
+/*
+        if (unlikely(parent->d_flags & DCACHE_OP_HASH)) {
+                err = parent->d_op->d_hash(parent, nd->inode, name);
+                if (err < 0)
+                        return err;
+        }
+*/
+
+        //
+        // Rename seqlock is not required here because in the off chance
+        // of a false negative due to a concurrent rename, we're going to
+        // do the non-racy lookup, below.
+        //
+/* 
+        if (nd->flags & LOOKUP_RCU) {
+                unsigned seq;
+
+                *inode = nd->inode;
+                dentry = __d_lookup_rcu(parent, name, &seq, inode);
+                if (!dentry) {
+                        if (nameidata_drop_rcu(nd))
+                                return -ECHILD;
+                        goto need_lookup;
+                }
+                // Memory barrier in read_seqcount_begin of child is enough
+                if (__read_seqcount_retry(&parent->d_seq, nd->seq))
+                        return -ECHILD;
+
+               nd->seq = seq;
+                if (unlikely(dentry->d_flags & DCACHE_OP_REVALIDATE)) {
+                        dentry = do_revalidate_rcu(dentry, nd);
+                        if (!dentry)
+                                goto need_lookup;
+                        if (IS_ERR(dentry))
+                                goto fail;
+                        if (!(nd->flags & LOOKUP_RCU))
+                                goto done;
+                }
+                path->mnt = mnt;
+                path->dentry = dentry;
+                if (likely(__follow_mount_rcu(nd, path, inode, false)))
+                        return 0;
+                if (nameidata_drop_rcu(nd))
+                        return -ECHILD;
+                // fallthru
+        }
+*/
+        dentry = __d_lookup(NULL, name);
+        if (!dentry)
+                goto need_lookuptag;
+foundtag:
+/*
+        if (unlikely(dentry->d_flags & DCACHE_OP_REVALIDATE)) {
+                dentry = do_revalidate(dentry, nd);
+                if (!dentry)
+                        goto need_lookup;
+                if (IS_ERR(dentry))
+                        goto fail;
+        }
+*/
+donetag:
+        path->mnt = mnt;
+        path->dentry = dentry;
+/*
+        err = follow_managed(path, nd->flags);
+        if (unlikely(err < 0)) {
+                path_put_conditional(path, nd);
+                return err;
+        }
+        *inode = path->dentry->d_inode;
+*/
+        return 0;
+
+need_lookuptag:
+        //dir = parent->d_inode;
+        //BUG_ON(nd->inode != dir);
+
+        //mutex_lock(&dir->i_mutex);
+        //
+        // First re-do the cached lookup just in case it was created
+        // while we waited for the directory semaphore, or the first
+        // lookup failed due to an unrelated rename.
+        //
+        // This could use version numbering or similar to avoid unnecessary
+        // cache lookups, but then we'd have to do the first lookup in the
+        // non-racy way. However in the common case here, everything should
+        // be hot in cache, so would it be a big win?
+        //
+        //dentry = d_lookup(parent, name);
+        if (likely(!dentry)) {
+                dentry = d_alloc_and_lookuptag(parent, name, ino);
+                //mutex_unlock(&dir->i_mutex);
+                if (IS_ERR(dentry))
+                        goto failtag;
+                goto donetag;
+        }
+        //
+        // Uhhuh! Nasty case: the cache was re-populated while
+        // we waited on the semaphore. Need to revalidate.
+        //
+        //mutex_unlock(&dir->i_mutex);
+        goto foundtag;
+
+failtag:
+        return PTR_ERR(dentry);
 }
 
 /*
@@ -2555,6 +2697,300 @@ out_path:
 out_filp:
 	filp = ERR_PTR(error);
 	goto out;
+}
+
+struct file *do_filp_opentag(unsigned long ino, int open_flag, int acc_mode)
+{
+        struct file *filp;
+        struct nameidata nd;
+        int error;
+        //struct path path;
+        //int count = 0;
+        int flag = open_to_namei_flags(open_flag);
+        int flags;
+
+        int mode;
+
+        if (!(open_flag & O_CREAT))
+                mode = 0;
+
+        // Must never be set by userspace
+        open_flag &= ~FMODE_NONOTIFY;
+
+        //
+        // O_SYNC is implemented as __O_SYNC|O_DSYNC.  As many places only
+        // check for O_DSYNC if the need any syncing at all we enforce it's
+        // always set instead of having to deal with possibly weird behaviour
+        // for malicious applications setting only __O_SYNC.
+        //
+/*
+        if (open_flag & __O_SYNC)
+                open_flag |= O_DSYNC;
+*/
+        if (!acc_mode)
+                acc_mode = MAY_OPEN | ACC_MODE(open_flag);
+/*
+        // O_TRUNC implies we need access checks for write permissions
+        if (open_flag & O_TRUNC)
+                acc_mode |= MAY_WRITE;
+
+        // Allow the LSM permission hook to distinguish append
+        // access from general write access.
+        if (open_flag & O_APPEND)
+                acc_mode |= MAY_APPEND;
+*/
+        flags = LOOKUP_OPEN;
+/*
+        if (open_flag & O_CREAT) {
+                flags |= LOOKUP_CREATE;
+                if (open_flag & O_EXCL)
+                        flags |= LOOKUP_EXCL;
+        }
+        if (open_flag & O_DIRECTORY)
+                flags |= LOOKUP_DIRECTORY;
+        if (!(open_flag & O_NOFOLLOW))
+                flags |= LOOKUP_FOLLOW;
+*/
+        filp = get_empty_filp();
+        if (!filp)
+                return ERR_PTR(-ENFILE);
+
+        filp->f_flags = open_flag;
+        nd.intent.open.file = filp;
+        nd.intent.open.flags = flag;
+        nd.intent.open.create_mode = mode;
+/*
+        if (open_flag & O_CREAT)
+                goto creat;
+*/
+        // !O_CREAT, simple open
+        error = open_namei(ino, flags, &nd);
+/*
+        if (unlikely(error))
+                goto out_filp;
+        error = -ELOOP;
+        if (!(nd.flags & LOOKUP_FOLLOW)) {
+                if (nd.inode->i_op->follow_link)
+                        goto out_path;
+        }
+        error = -ENOTDIR;
+        if (nd.flags & LOOKUP_DIRECTORY) {
+                if (!nd.inode->i_op->lookup)
+                        goto out_path;
+        }
+*/
+        //audit_inode(pathname, nd.path.dentry);
+        filp = finish_open(&nd, open_flag, acc_mode);
+        release_open_intent(&nd);
+        return filp;
+/*
+creat:
+        // OK, have to create the file. Find the parent.
+        error = path_init_rcu(dfd, pathname,
+                        LOOKUP_PARENT | (flags & LOOKUP_REVAL), &nd);
+        if (error)
+                goto out_filp;
+        error = path_walk_rcu(pathname, &nd);
+        path_finish_rcu(&nd);
+        if (unlikely(error == -ECHILD || error == -ESTALE)) {
+                // slower, locked walk
+                if (error == -ESTALE) {
+reval:
+                        flags |= LOOKUP_REVAL;
+                }
+                error = path_init(dfd, pathname,
+                                LOOKUP_PARENT | (flags & LOOKUP_REVAL), &nd);
+                if (error)
+                        goto out_filp;
+
+                error = path_walk_simple(pathname, &nd);
+        }
+        if (unlikely(error))
+                goto out_filp;
+        if (unlikely(!audit_dummy_context()))
+                audit_inode(pathname, nd.path.dentry);
+
+        //
+        // We have the parent and last component.
+        //
+        nd.flags = flags;
+        filp = do_last(&nd, &path, open_flag, acc_mode, mode, pathname);
+        while (unlikely(!filp)) { // trailing symlink
+                struct path link = path;
+                struct inode *linki = link.dentry->d_inode;
+                void *cookie;
+                error = -ELOOP;
+                if (!(nd.flags & LOOKUP_FOLLOW))
+                        goto exit_dput;
+                if (count++ == 32)
+                        goto exit_dput;
+                //
+                // This is subtle. Instead of calling do_follow_link() we do
+                // the thing by hands. The reason is that this way we have zero
+                // link_count and path_walk() (called from ->follow_link)
+                // honoring LOOKUP_PARENT.  After that we have the parent and
+                // last component, i.e. we are in the same situation as after
+                // the first path_walk().  Well, almost - if the last component
+                // is normal we get its copy stored in nd->last.name and we will
+                // have to putname() it when we are done. Procfs-like symlinks
+                // just set LAST_BIND.
+                //
+                nd.flags |= LOOKUP_PARENT;
+                error = security_inode_follow_link(link.dentry, &nd);
+                if (error)
+                        goto exit_dput;
+                error = __do_follow_link(&link, &nd, &cookie);
+                if (unlikely(error)) {
+                        if (!IS_ERR(cookie) && linki->i_op->put_link)
+                                linki->i_op->put_link(link.dentry, &nd, cookie);
+                        // nd.path had been dropped
+                        nd.path = link;
+                        goto out_path;
+                }
+                nd.flags &= ~LOOKUP_PARENT;
+                filp = do_last(&nd, &path, open_flag, acc_mode, mode, pathname);
+                if (linki->i_op->put_link)
+                        linki->i_op->put_link(link.dentry, &nd, cookie);
+                path_put(&link);
+        }
+*/
+/*
+out:
+        if (nd.root.mnt)
+                path_put(&nd.root);
+        if (filp == ERR_PTR(-ESTALE) && !(flags & LOOKUP_REVAL))
+                goto reval;
+        release_open_intent(&nd);
+        return filp;
+*/
+/*
+exit_dput:
+        path_put_conditional(&path, &nd);
+out_path:
+        path_put(&nd.path);
+*/
+/*
+out_filp:
+        filp = ERR_PTR(error);
+        goto out;
+*/
+}
+
+static int open_nami(unsigned long ino, unsigned int flags, struct nameidata *nd)
+{
+        int retval;
+
+        //
+        // Path walking is largely split up into 2 different synchronisation
+        // schemes, rcu-walk and ref-walk (explained in
+        // Documentation/filesystems/path-lookup.txt). These share much of the
+        // path walk code, but some things particularly setup, cleanup, and
+        // following mounts are sufficiently divergent that functions are
+        // duplicated. Typically there is a function foo(), and its RCU
+        // analogue, foo_rcu().
+        //
+        // -ECHILD is the error number of choice (just to avoid clashes) that
+        // is returned if some aspect of an rcu-walk fails. Such an error must
+        // be handled by restarting a traditional ref-walk (which will always
+        // be able to complete).
+        //
+/*
+        retval = path_init_rcu(dfd, name, flags, nd);
+        if (unlikely(retval))
+                return retval;
+*/
+        nd->last_type = LAST_ROOT;
+        nd->flags = flags | LOOKUP_RCU;
+        nd->depth = 0;
+        nd->root.mnt = NULL
+        nd->file = NULL;
+
+        struct fs_struct *fs = current->fs;
+        unsigned seq;
+
+        br_read_lock(vfsmount_lock);
+        rcu_read_lock();
+
+        do {
+                seq = read_seqcount_begin(&fs->seq);
+                nd->root = fs->root;
+                nd->path = nd->root;
+                nd->seq = __read_seqcount_begin(&nd->path.dentry->d_seq);
+        } while (read_seqcount_retry(&fs->seq, seq));
+
+        nd->inode = nd->path.dentry->d_inode;
+
+/*
+        retval = path_walk_rcu(name, nd);
+*/
+        current->total_link_count = 0;
+
+        #define NAME_LEN 10
+        char name[NAME_LEN];
+        memset(name, '\0', NAME_LEN);
+        name[0] = '/';
+        snprintf(name + 1, NAME_LEN - 1, "%d", ino);
+
+        struct path next;
+        struct qstr this;
+        unsigned int c;
+
+        this.name = name;
+        c = *(const unsigned char *)name;
+
+        hash = init_name_hash();
+        do {
+                name++;
+                hash = partial_name_hash(c, hash);
+                c = *(const unsigned char *)name;
+        } while (c && (c != '/'));
+        this.len = name - (const char *) this.name;
+        this.hash = end_name_hash(hash);
+
+        retval = do_lookuptag(nd, &this, ino, &next);
+
+/*
+        path_finish_rcu(nd);
+*/
+        if (nd->flags & LOOKUP_RCU) {
+                nd->flags &= ~LOOKUP_RCU;
+                nd->root.mnt = NULL;
+                rcu_read_unlock();
+                br_read_unlock(vfsmount_lock);
+        }
+        if (nd->file)
+                fput(nd->file);
+
+        nd->path = next;
+
+/*
+        if (nd->root.mnt) {
+                path_put(&nd->root);
+                nd->root.mnt = NULL;
+        }
+
+        if (unlikely(retval == -ECHILD || retval == -ESTALE)) {
+                // slower, locked walk
+                if (retval == -ESTALE)
+                        flags |= LOOKUP_REVAL;
+                retval = path_init(dfd, name, flags, nd);
+                if (unlikely(retval))
+                        return retval;
+                retval = path_walk(name, nd);
+                if (nd->root.mnt) {
+                        path_put(&nd->root);
+                        nd->root.mnt = NULL;
+                }
+        }
+
+        if (likely(!retval)) {
+                if (unlikely(!audit_dummy_context())) {
+                        if (nd->path.dentry && nd->inode)
+                                audit_inode(name, nd->path.dentry);
+                }
+        }
+*/
+        return retval;
 }
 
 /**

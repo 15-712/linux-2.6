@@ -45,6 +45,7 @@ void uninstall_syscalls(void) {
 	lstag_ptr = prev_lstag;
 }
 
+// @flags: O_RDONLY, O_WDONLY, O_RDWR
 int opentag(const char __user *tagexp, int flags) {
         long ret;
 
@@ -58,7 +59,6 @@ int opentag(const char __user *tagexp, int flags) {
 
         return ret;
 }
-
 
 int addtag(const char __user *filename, const char __user *tag) {
 	char *file, *t;
