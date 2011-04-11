@@ -835,6 +835,7 @@ asmlinkage long sys_old_mmap(struct mmap_arg_struct __user *arg);
 
 /* TAGFS */
 
+asmlinkage long sys_opentag(const char __user *tagexp, int flags);
 asmlinkage long sys_addtag(const char __user *filename, const char __user *tag);
 
 #endif

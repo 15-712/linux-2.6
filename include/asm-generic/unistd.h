@@ -648,6 +648,8 @@ __SYSCALL(__NR_addtag, sys_addtag)
 #define __NR_opentag 249
 #define __NR_mvtag 250
 #define __NR_distag 251
+#define __NR_opentag 252
+__SYSCALL(__NR_opentag, sys_opentag)
 
 #define __NR_wait4 260
 __SYSCALL(__NR_wait4, sys_wait4)

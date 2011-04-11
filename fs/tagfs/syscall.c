@@ -10,6 +10,7 @@ struct expr_tree *tree = NULL;
 
 static char inv[] = {'.', '&', '|', '/'};
 
+int (*prev_opentag)(const char __user *, const char __user *);
 int (*prev_addtag)(const char __user *, const char __user *);
 int (*prev_rmtag)(const char __user *, const char __user *);
 int (*prev_chtag)(const char __user *);
@@ -18,12 +19,14 @@ int (*prev_getcwt)(char __user *, unsigned long size);
 int (*prev_lstag)(const char __user *, void __user *, unsigned long, int);
 
 void install_syscalls(void) {
+	prev_opentag = opentag_ptr;
 	prev_addtag = addtag_ptr;
 	prev_rmtag = rmtag_ptr;
 	prev_chtag = chtag_ptr;
 	prev_mvtag = mvtag_ptr;
 	prev_getcwt = getcwt_ptr;
 	prev_lstag = lstag_ptr;
+	opentag_ptr = opentag;
 	addtag_ptr = addtag;
 	rmtag_ptr = rmtag;
 	chtag_ptr = chtag;
@@ -33,12 +36,27 @@ void install_syscalls(void) {
 }
 
 void uninstall_syscalls(void) {
+	opentag_ptr = prev_opentag;
 	addtag_ptr = prev_addtag;
 	rmtag_ptr = prev_rmtag;
 	chtag_ptr = prev_chtag;
 	mvtag_ptr = prev_mvtag;
 	getcwt_ptr = prev_getcwt;
 	lstag_ptr = prev_lstag;
+}
+
+int opentag(const char __user *tagexp, int flags) {
+        long ret;
+
+        //if (force_o_largefile())
+                //flags |= O_LARGEFILE;
+
+        ret = do_sys_opentag(tagexp, flags);
+
+        /* avoid REGPARM breakage on x86: */
+        asmlinkage_protect(2, ret, tagexp, flags);
+
+        return ret;
 }
 
 

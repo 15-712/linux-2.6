@@ -8,6 +8,7 @@
 extern char cwt[MAX_TAGEX_LEN+1];
 extern struct expr_tree *tree;
 
+int opentag(const char __user *, int);
 int addtag(const char __user *, const char __user *);
 int rmtag(const char __user *, const char __user *);
 int chtag(const char __user *);
