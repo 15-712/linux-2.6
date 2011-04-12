@@ -15,7 +15,7 @@ struct expr_tree *tree = NULL;
 
 static char inv[] = {'.', '&', '|', '/'};
 
-int (*prev_opentag)(const char __user *, const char __user *);
+int (*prev_opentag)(const char __user *, int);
 int (*prev_addtag)(const char __user *, const char __user *);
 int (*prev_rmtag)(const char __user *, const char __user *);
 int (*prev_chtag)(const char __user *);
@@ -50,21 +50,6 @@ void uninstall_syscalls(void) {
 	lstag_ptr = prev_lstag;
 }
 
-// @flags: O_RDONLY, O_WDONLY, O_RDWR
-int opentag(const char __user *tagexp, int flags) {
-        long ret;
-
-        //if (force_o_largefile())
-                //flags |= O_LARGEFILE;
-
-        ret = do_sys_opentag(tagexp, flags);
-
-        /* avoid REGPARM breakage on x86: */
-        asmlinkage_protect(2, ret, tagexp, flags);
-
-        return ret;
-}
-
 static long do_sys_opentag(const char __user *tagexp, int flags)
 {
         char *tmp = getname(tagexp);
@@ -78,7 +63,7 @@ static long do_sys_opentag(const char __user *tagexp, int flags)
         struct expr_tree *e = build_tree(tagexp);
         if (e == NULL)
                 return -EINVAL;
-        struct table_element *t = parse_tree(e);
+        struct table_element *t = parse_tree(e, table);
         if (t == NULL)
                 return -EINVAL;
         if (element_size(t) != 1)
@@ -101,6 +86,21 @@ static long do_sys_opentag(const char __user *tagexp, int flags)
                 putname(tmp);
         }
         return fd;
+}
+
+// @flags: O_RDONLY, O_WDONLY, O_RDWR
+int opentag(const char __user *tagexp, int flags) {
+        long ret;
+
+        //if (force_o_largefile())
+                //flags |= O_LARGEFILE;
+
+        ret = do_sys_opentag(tagexp, flags);
+
+        /* avoid REGPARM breakage on x86: */
+        asmlinkage_protect(2, ret, tagexp, flags);
+
+        return ret;
 }
 
 int addtag(const char __user *filename, const char __user *tag) {
