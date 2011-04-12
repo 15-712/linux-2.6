@@ -1222,7 +1222,7 @@ static struct dentry *d_alloc_and_lookuptag(struct dentry *parent, struct qstr *
         if (unlikely(!dentry))
                 return ERR_PTR(-ENOMEM);
 
-        old = inode->i_op->lookup(inode, dentry, ino);
+        old = inode->i_op->lookup(inode, dentry, (struct nameidata *)ino);
         if (unlikely(old)) {
                 dput(dentry);
                 dentry = old;
@@ -2699,6 +2699,125 @@ out_filp:
 	goto out;
 }
 
+static int open_namei(unsigned long ino, unsigned int flags, struct nameidata *nd)
+{
+        int retval;
+
+        //
+        // Path walking is largely split up into 2 different synchronisation
+        // schemes, rcu-walk and ref-walk (explained in
+        // Documentation/filesystems/path-lookup.txt). These share much of the
+        // path walk code, but some things particularly setup, cleanup, and
+        // following mounts are sufficiently divergent that functions are
+        // duplicated. Typically there is a function foo(), and its RCU
+        // analogue, foo_rcu().
+        //
+        // -ECHILD is the error number of choice (just to avoid clashes) that
+        // is returned if some aspect of an rcu-walk fails. Such an error must
+        // be handled by restarting a traditional ref-walk (which will always
+        // be able to complete).
+        //
+/*
+        retval = path_init_rcu(dfd, name, flags, nd);
+        if (unlikely(retval))
+                return retval;
+*/
+        nd->last_type = LAST_ROOT;
+        nd->flags = flags | LOOKUP_RCU;
+        nd->depth = 0;
+        nd->root.mnt = NULL;
+        nd->file = NULL;
+
+        struct fs_struct *fs = current->fs;
+        unsigned seq;
+
+        br_read_lock(vfsmount_lock);
+        rcu_read_lock();
+
+        do {
+                seq = read_seqcount_begin(&fs->seq);
+                nd->root = fs->root;
+                nd->path = nd->root;
+                nd->seq = __read_seqcount_begin(&nd->path.dentry->d_seq);
+        } while (read_seqcount_retry(&fs->seq, seq));
+
+        nd->inode = nd->path.dentry->d_inode;
+
+/*
+        retval = path_walk_rcu(name, nd);
+*/
+        current->total_link_count = 0;
+
+        #define NAME_LEN 10
+        char name[NAME_LEN];
+        memset(name, '\0', NAME_LEN);
+        name[0] = '/';
+        snprintf(name + 1, NAME_LEN - 1, "%lu", ino);
+
+        struct path next;
+        struct qstr this;
+        unsigned int c;
+	unsigned long hash;
+	const char *ptr = name;
+
+        this.name = name;
+        c = *(const unsigned char *)name;
+
+        hash = init_name_hash();
+        do {
+                ptr++;
+                hash = partial_name_hash(c, hash);
+                c = *(const unsigned char *)ptr;
+        } while (c && (c != '/'));
+        this.len = ptr - (const char *) this.name;
+        this.hash = end_name_hash(hash);
+
+        retval = do_lookuptag(nd, &this, ino, &next);
+
+/*
+        path_finish_rcu(nd);
+*/
+        if (nd->flags & LOOKUP_RCU) {
+                nd->flags &= ~LOOKUP_RCU;
+                nd->root.mnt = NULL;
+                rcu_read_unlock();
+                br_read_unlock(vfsmount_lock);
+        }
+        if (nd->file)
+                fput(nd->file);
+
+        nd->path = next;
+
+/*
+        if (nd->root.mnt) {
+                path_put(&nd->root);
+                nd->root.mnt = NULL;
+        }
+
+        if (unlikely(retval == -ECHILD || retval == -ESTALE)) {
+                // slower, locked walk
+                if (retval == -ESTALE)
+                        flags |= LOOKUP_REVAL;
+                retval = path_init(dfd, name, flags, nd);
+                if (unlikely(retval))
+                        return retval;
+                retval = path_walk(name, nd);
+                if (nd->root.mnt) {
+                        path_put(&nd->root);
+                        nd->root.mnt = NULL;
+                }
+        }
+
+        if (likely(!retval)) {
+                if (unlikely(!audit_dummy_context())) {
+                        if (nd->path.dentry && nd->inode)
+                                audit_inode(name, nd->path.dentry);
+                }
+        }
+*/
+        return retval;
+}
+
 struct file *do_filp_opentag(unsigned long ino, int open_flag, int acc_mode)
 {
         struct file *filp;
@@ -2874,123 +2993,6 @@ out_filp:
         filp = ERR_PTR(error);
         goto out;
 */
-}
-
-static int open_nami(unsigned long ino, unsigned int flags, struct nameidata *nd)
-{
-        int retval;
-
-        //
-        // Path walking is largely split up into 2 different synchronisation
-        // schemes, rcu-walk and ref-walk (explained in
-        // Documentation/filesystems/path-lookup.txt). These share much of the
-        // path walk code, but some things particularly setup, cleanup, and
-        // following mounts are sufficiently divergent that functions are
-        // duplicated. Typically there is a function foo(), and its RCU
-        // analogue, foo_rcu().
-        //
-        // -ECHILD is the error number of choice (just to avoid clashes) that
-        // is returned if some aspect of an rcu-walk fails. Such an error must
-        // be handled by restarting a traditional ref-walk (which will always
-        // be able to complete).
-        //
-/*
-        retval = path_init_rcu(dfd, name, flags, nd);
-        if (unlikely(retval))
-                return retval;
-*/
-        nd->last_type = LAST_ROOT;
-        nd->flags = flags | LOOKUP_RCU;
-        nd->depth = 0;
-        nd->root.mnt = NULL
-        nd->file = NULL;
-
-        struct fs_struct *fs = current->fs;
-        unsigned seq;
-
-        br_read_lock(vfsmount_lock);
-        rcu_read_lock();
-
-        do {
-                seq = read_seqcount_begin(&fs->seq);
-                nd->root = fs->root;
-                nd->path = nd->root;
-                nd->seq = __read_seqcount_begin(&nd->path.dentry->d_seq);
-        } while (read_seqcount_retry(&fs->seq, seq));
-
-        nd->inode = nd->path.dentry->d_inode;
-
-/*
-        retval = path_walk_rcu(name, nd);
-*/
-        current->total_link_count = 0;
-
-        #define NAME_LEN 10
-        char name[NAME_LEN];
-        memset(name, '\0', NAME_LEN);
-        name[0] = '/';
-        snprintf(name + 1, NAME_LEN - 1, "%d", ino);
-
-        struct path next;
-        struct qstr this;
-        unsigned int c;
-
-        this.name = name;
-        c = *(const unsigned char *)name;
-
-        hash = init_name_hash();
-        do {
-                name++;
-                hash = partial_name_hash(c, hash);
-                c = *(const unsigned char *)name;
-        } while (c && (c != '/'));
-        this.len = name - (const char *) this.name;
-        this.hash = end_name_hash(hash);
-
-        retval = do_lookuptag(nd, &this, ino, &next);
-
-/*
-        path_finish_rcu(nd);
-*/
-        if (nd->flags & LOOKUP_RCU) {
-                nd->flags &= ~LOOKUP_RCU;
-                nd->root.mnt = NULL;
-                rcu_read_unlock();
-                br_read_unlock(vfsmount_lock);
-        }
-        if (nd->file)
-                fput(nd->file);
-
-        nd->path = next;
-
-/*
-        if (nd->root.mnt) {
-                path_put(&nd->root);
-                nd->root.mnt = NULL;
-        }
-
-        if (unlikely(retval == -ECHILD || retval == -ESTALE)) {
-                // slower, locked walk
-                if (retval == -ESTALE)
-                        flags |= LOOKUP_REVAL;
-                retval = path_init(dfd, name, flags, nd);
-                if (unlikely(retval))
-                        return retval;
-                retval = path_walk(name, nd);
-                if (nd->root.mnt) {
-                        path_put(&nd->root);
-                        nd->root.mnt = NULL;
-                }
-        }
-
-        if (likely(!retval)) {
-                if (unlikely(!audit_dummy_context())) {
-                        if (nd->path.dentry && nd->inode)
-                                audit_inode(name, nd->path.dentry);
-                }
-        }
-*/
-        return retval;
 }
 
 /**

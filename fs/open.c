@@ -966,7 +966,7 @@ long do_sys_open(int dfd, const char __user *filename, int flags, int mode)
 	}
 	return fd;
 }
-
+/*
 long do_sys_opentag(const char __user *tagexp, int flags)
 {
         char *tmp = getname(tagexp);
@@ -977,7 +977,7 @@ long do_sys_opentag(const char __user *tagexp, int flags)
                 return -EINVAL;
 
         // gets inode number
-        struct expr_tree *e = build_tree(tag_exp);
+        struct expr_tree *e = build_tree(tagexp);
         if (e == NULL)
                 return -EINVAL;
         struct table_element *t = parse_tree(e);
@@ -1004,7 +1004,7 @@ long do_sys_opentag(const char __user *tagexp, int flags)
         }
         return fd;
 }
-
+*/
 SYSCALL_DEFINE3(open, const char __user *, filename, int, flags, int, mode)
 {
 	long ret;
