@@ -2208,6 +2208,9 @@ extern void free_write_pipe(struct file *);
 extern struct file *do_filp_open(int dfd, const char *pathname,
 		int open_flag, int mode, int acc_mode);
 extern struct file *do_filp_opentag(unsigned long ino, int open_tag, int acc_mode);
+
+extern struct inode *inode_lookup(const char *pathname);
+
 extern int may_open(struct path *, int, int);
 
 extern int kernel_read(struct file *, loff_t, char *, unsigned long);
