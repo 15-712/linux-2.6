@@ -108,7 +108,7 @@ int opentag(const char __user *tagexp, int flags) {
 }
 
 int addtag(const char __user *filename, const char __user *tag) {
-	char *file, *t;
+	char *file, *t, *name;
 	int *tag_ids = NULL;
 	struct table_element *curr, *check;
 	struct inode_entry *ent;
@@ -136,6 +136,18 @@ int addtag(const char __user *filename, const char __user *tag) {
 			}
 		}
 	}
+	len = strlen(file);
+	i = len - 1;
+	while(i >= 0) {
+		if (file[i] == '/')
+			break;
+		i--;
+	}
+	if (i == len - 1) {
+		ret = -EINVAL;
+		goto fail_tag;
+	}
+	name = file + i + 1;
 	//TODO: ino <- Get inode
 	//TODO: tag_ids <- Get tags from inode
 	curr = get_inodes(table, t);
@@ -156,7 +168,7 @@ int addtag(const char __user *filename, const char __user *tag) {
 				goto fail;
 			}
 			ent->ino = ino->i_ino;
-			strncpy(ent->filename, file, MAX_FILENAME_LEN);
+			strncpy(ent->filename, name, MAX_FILENAME_LEN);
 			ent->count = 0;
 		}
 		ret = table_insert(table, t, ent);
@@ -221,7 +233,7 @@ int addtag(const char __user *filename, const char __user *tag) {
 			goto fail;
 		}
 		ent->ino = ino->i_ino;
-		strncpy(ent->filename, file, MAX_FILENAME_LEN);
+		strncpy(ent->filename, name, MAX_FILENAME_LEN);
 		ent->count = 0;
 	} else {
 		ent = find_entry(check, ino->i_ino);
@@ -293,7 +305,7 @@ int rmtag(const char __user *filename, const char __user *tag) {
 		entries = set_to_array(curr);
 		conflict = 0;
 		for(i = 0; i < element_size(curr); i++)
-			if (entries[i]->count == num_tags - 1 && strncmp(entries[i]->filename, file, MAX_FILENAME_LEN)) {
+			if (entries[i]->count == num_tags - 1) {
 				conflict = 1;
 				break;
 			}
