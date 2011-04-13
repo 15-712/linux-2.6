@@ -85,3 +85,11 @@ void deallocate_block(unsigned long ino) {
 		curr = curr->next;
 	}
 }
+
+void deallocate_all() {
+	while(head) {
+		struct block *temp = head;
+		head = head->next;
+		kfree(temp);
+	}
+}
