@@ -12,6 +12,7 @@
 
 char cwt[MAX_TAGEX_LEN+1];
 struct expr_tree *tree = NULL;
+struct hash_table *table;
 
 static char inv[] = {'.', '&', '|', '/'};
 
@@ -54,22 +55,25 @@ static long do_sys_opentag(const char __user *tagexp, int flags)
 {
         char *tmp = getname(tagexp);
         int fd = PTR_ERR(tmp);
+	struct expr_tree *e;
+	struct table_element *t;
+	unsigned long ino;
 
         // checks flags
         if ((flags != O_RDONLY) && (flags != O_WRONLY) && (flags != O_RDWR))
                 return -EINVAL;
 
         // gets inode number
-        struct expr_tree *e = build_tree(tagexp);
+        e = build_tree(tagexp);
         if (e == NULL)
                 return -EINVAL;
-        struct table_element *t = parse_tree(e, table);
+        t = parse_tree(e, table);
         if (t == NULL)
                 return -EINVAL;
         if (element_size(t) != 1)
                 return -EMFILE;  // too many open files
 
-        unsigned long ino = set_to_array(t)[0]->ino;
+        ino = set_to_array(t)[0]->ino;
 
         if ((!IS_ERR(tmp)) || (ino > 0)) {
                 fd = get_unused_fd_flags(flags);
@@ -193,7 +197,7 @@ int addtag(const char __user *filename, const char __user *tag) {
 	entries = set_to_array(curr);
 	conflict = 0;
 	for(i = 0; i < element_size(curr); i++) {
-		if (entries[i]->count == num_tags + 1 && strncmp(entries[i]->filename, file, MAX_FILENAME_LEN)) {
+		if (entries[i]->count == num_tags + 1) {
 			conflict = 1;
 			break;
 		}
@@ -383,7 +387,7 @@ int lstag(const char __user *expr, void __user *buf, unsigned long size, int off
 	const struct inode_entry **inodes;
 	char *kexpr = getname(expr);
 	char *full_expr = NULL;
-	unsigned int i;
+	int i;
 	unsigned int len;
 	int error;
 	
