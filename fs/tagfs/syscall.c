@@ -383,7 +383,7 @@ int lstag(const char __user *expr, void __user *buf, unsigned long size, int off
 	const struct inode_entry **inodes;
 	char *kexpr = getname(expr);
 	char *full_expr = NULL;
-	unsigned int i;
+	int i;
 	unsigned int len;
 	int error;
 	
