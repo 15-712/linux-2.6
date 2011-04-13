@@ -2995,6 +2995,8 @@ out_filp:
 */
 }
 
+EXPORT_SYMBOL(do_filp_opentag);
+
 /**
  * filp_open - open file and return file pointer
  *
