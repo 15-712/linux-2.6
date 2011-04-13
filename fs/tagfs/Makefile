@@ -3,7 +3,7 @@
 #
 ifneq (${KERNELRELEASE},)
 obj-m += tagfs.o
-tagfs-objs += acl.o balloc.o dir.o file.o ialloc.o inode.o ioctl.o namei.o super.o symlink.o sarray.o table.o syscall.o expr.o
+tagfs-objs += xattr_trusted.o xattr_user.o xattr_security.o xattr.o acl.o balloc.o dir.o file.o ialloc.o inode.o ioctl.o namei.o super.o symlink.o sarray.o table.o syscall.o expr.o
 else
 #KERNEL_SOURCE := /lib/modules/$(shell uname -r)/build
 KERNEL_SOURCE := ../..
