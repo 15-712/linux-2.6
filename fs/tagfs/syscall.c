@@ -24,8 +24,10 @@ int (*prev_chtag)(const char __user *);
 int (*prev_mvtag)(const char __user *, const char __user *);
 int (*prev_getcwt)(char __user *, unsigned long size);
 int (*prev_lstag)(const char __user *, void __user *, unsigned long, int);
+//int (*prev_distag)(char __user *, char __user *, unsigned long); 
 
 void install_syscalls(void) {
+	printk("Installing tag syscalls\n");
 	prev_opentag = opentag_ptr;
 	prev_addtag = addtag_ptr;
 	prev_rmtag = rmtag_ptr;
@@ -33,6 +35,7 @@ void install_syscalls(void) {
 	prev_mvtag = mvtag_ptr;
 	prev_getcwt = getcwt_ptr;
 	prev_lstag = lstag_ptr;
+//	prev_distag = distag_ptr;
 	opentag_ptr = opentag;
 	addtag_ptr = addtag;
 	rmtag_ptr = rmtag;
@@ -40,6 +43,7 @@ void install_syscalls(void) {
 	mvtag_ptr = mvtag;
 	getcwt_ptr = getcwt;
 	lstag_ptr = lstag;
+//	distag_ptr = distag;
 }
 
 void uninstall_syscalls(void) {
@@ -50,6 +54,7 @@ void uninstall_syscalls(void) {
 	mvtag_ptr = prev_mvtag;
 	getcwt_ptr = prev_getcwt;
 	lstag_ptr = prev_lstag;
+//	distag_ptr = prev_distag;
 }
 
 static long do_sys_opentag(const char __user *tagexp, int flags)
@@ -97,6 +102,7 @@ static long do_sys_opentag(const char __user *tagexp, int flags)
 int opentag(const char __user *tagexp, int flags) {
         long ret;
 
+	printk("opentag system call\n");
         //if (force_o_largefile())
                 //flags |= O_LARGEFILE;
 
@@ -117,6 +123,7 @@ int addtag(const char __user *filename, const char __user *tag) {
 	struct inode *ino = NULL;
 	int i, ret = 0, num_tags = 0, conflict, min, len;
 
+	printk("addtag system call\n");
 	file = getname(filename);
 	if (IS_ERR(file)) {
 		ret = PTR_ERR(file);
@@ -286,6 +293,8 @@ int rmtag(const char __user *filename, const char __user *tag) {
 	struct inode *ino = NULL;
 	int i, ret = 0, num_tags = 0, conflict;
 
+	printk("rmtag system call\n");
+
 	file = getname(filename);
 	if (IS_ERR(file)) {
 		ret = PTR_ERR(file);
@@ -359,6 +368,7 @@ int chtag(const char __user *tagex) {
 	char *ktagex = getname(tagex);
 	struct expr_tree *new_tree;
 	int len, ret = 0;
+	printk("chtag system call\n");
 	if (IS_ERR(ktagex)) {
 		ret = -ENOMEM;
 		goto end;
@@ -395,6 +405,7 @@ end:
 int mvtag(const char __user *tag1, const char __user *tag2) {
 	char *kt1, *kt2;
 	int ret;
+	printk("mvtag system call\n");
 	kt1= getname(tag1);
 	if (IS_ERR(kt1))
 		return -ENOMEM;
@@ -411,8 +422,11 @@ int mvtag(const char __user *tag1, const char __user *tag2) {
 
 int getcwt(char __user *buf, unsigned long size) {
 	/* Why does getcwd (fs/dcache.c:2767) seem so complicated? */
-	int error = -ERANGE;
-	unsigned long len = strlen(cwt);
+	int error;
+	unsigned long len;
+	printk("getcwt system call\n");
+	error = -ERANGE;
+	len = strlen(cwt);
 	if (len <= size) {
 		error = len;
 		if(copy_to_user(buf, cwt, len))
@@ -432,6 +446,7 @@ int lstag(const char __user *expr, void __user *buf, unsigned long size, int off
 	unsigned int len;
 	int error;
 	
+	printk("lstag system call\n");
 	error = -ENOMEM;
 	if (IS_ERR(kexpr))
 		goto end;
@@ -471,9 +486,10 @@ end:
 	return error;
 }
 
-int distag(char __user *filename, char __user *buf, unsigned int size) {
+int distag(char __user *filename, char __user *buf, unsigned long size) {
 	char *file;
 	int ret = 0;
+	printk("distag system call\n");
 
 	file = getname(filename);
 	if (IS_ERR(file)) {

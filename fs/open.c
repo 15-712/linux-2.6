@@ -64,13 +64,14 @@ int null_distag(const char __user *a) {
 	return -ENOSYS;
 }*/
 
-int (*opentag_ptr)(const char __user *, int) = null_opentag;
 int (*addtag_ptr)(const char __user *, const char __user *) = null_addtag;
 int (*rmtag_ptr)(const char __user *, const char __user *) = null_rmtag;
-int (*chtag_ptr)(const char __user *) = null_chtag;
-int (*mvtag_ptr)(const char __user *, const char __user *) = null_mvtag;
 int (*lstag_ptr)(const char __user *, void __user *, unsigned long, int) = null_lstag;
+int (*chtag_ptr)(const char __user *) = null_chtag;
 int (*getcwt_ptr)(char __user *, unsigned long) = null_getcwt;
+int (*opentag_ptr)(const char __user *, int) = null_opentag;
+int (*mvtag_ptr)(const char __user *, const char __user *) = null_mvtag;
+//int (*distag_ptr)(char __user *, char __user *, unsigned long) = null_distag;
 
 EXPORT_SYMBOL(opentag_ptr);
 EXPORT_SYMBOL(addtag_ptr);
@@ -79,6 +80,7 @@ EXPORT_SYMBOL(chtag_ptr);
 EXPORT_SYMBOL(mvtag_ptr);
 EXPORT_SYMBOL(lstag_ptr);
 EXPORT_SYMBOL(getcwt_ptr);
+//EXPORT_SYMBOL(distag_ptr);
 
 SYSCALL_DEFINE2(opentag, const char __user *, tagexp, int, flags) {
 	return opentag_ptr(tagexp, flags);
@@ -95,6 +97,15 @@ SYSCALL_DEFINE1(chtag, const char __user *, tagex) {
 SYSCALL_DEFINE2(mvtag, const char __user *, tag1, const char __user *, tag2) {
 	return mvtag_ptr(tag1, tag2);
 }
+SYSCALL_DEFINE2(getcwt, char __user *, buf, unsigned long, size) {
+	return getcwt_ptr(buf, size);
+}
+SYSCALL_DEFINE4(lstag, const char __user *, expr, void __user *, buf, unsigned long, size, int, offset) {
+	return lstag_ptr(expr, buf, size, offset);
+}
+/*SYSCALL_DEFINE3(distag, char __user *, filename, char __user *, buf, unsigned int, size) {
+	return distag_ptr(filename, buf, size);
+}*/
 
 int do_truncate(struct dentry *dentry, loff_t length, unsigned int time_attrs,
 	struct file *filp)

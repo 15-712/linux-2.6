@@ -642,14 +642,18 @@ __SYSCALL(__NR_recvmmsg, sys_recvmmsg)
 #define __NR_addtag 244
 __SYSCALL(__NR_addtag, sys_addtag)
 #define __NR_rmtag 245
+__SYSCALL(__NR_rmtag, sys_rmtag)
 #define __NR_lstag 246
+__SYSCALL(__NR_lstag, sys_lstag)
 #define __NR_chtag 247
+__SYSCALL(__NR_chtag, sys_chtag)
 #define __NR_getcwt 248
+__SYSCALL(__NR_getcwt, sys_getcwt)
 #define __NR_opentag 249
-#define __NR_mvtag 250
-#define __NR_distag 251
-#define __NR_opentag 252
 __SYSCALL(__NR_opentag, sys_opentag)
+#define __NR_mvtag 250
+__SYSCALL(__NR_mvtag, sys_mvtag)
+#define __NR_distag 251
 
 #define __NR_wait4 260
 __SYSCALL(__NR_wait4, sys_wait4)

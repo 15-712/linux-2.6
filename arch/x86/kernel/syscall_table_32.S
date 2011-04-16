@@ -341,4 +341,9 @@ ENTRY(sys_call_table)
 	.long sys_fanotify_mark
 	.long sys_prlimit64		/* 340 */
 	.long sys_addtag		/* 341, starting tagfs */
+	.long sys_rmtag
+	.long sys_lstag
+	.long sys_chtag
+	.long sys_getcwt		/* 345 */
 	.long sys_opentag
+	.long sys_mvtag

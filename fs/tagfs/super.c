@@ -1505,6 +1505,7 @@ static int __init init_ext2_fs(void)
 		goto out1;
 	install_syscalls();
 	table = create_table();
+	
         err = register_filesystem(&ext2_fs_type);
 	if (err)
 		goto out;
