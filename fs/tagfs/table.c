@@ -341,6 +341,13 @@ const char *get_tag(struct hash_table *table, int id) {
 	return table->lookup_table->tag + id * MAX_TAG_LEN;
 }
 
+int get_tagid(struct hash_table *table, const char *tag) {
+	struct tag_node *n = find_node(table, tag);
+	if (!n)
+		return -1;
+	return n->tag_id;
+}
+
 int change_tag(struct hash_table *table, char *tag1, char *tag2) {
 	struct tag_node *node, *prev;
 	unsigned long hash1, hash2;
@@ -366,3 +373,4 @@ int change_tag(struct hash_table *table, char *tag1, char *tag2) {
 	table->table[hash2] = node;
 	return 0;
 }
+

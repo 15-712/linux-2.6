@@ -9,6 +9,7 @@
 
 #include "syscall.h"
 #include "table.h"
+#include "block.h"
 
 char cwt[MAX_TAGEX_LEN+1];
 struct expr_tree *tree = NULL;
@@ -145,17 +146,22 @@ int addtag(const char __user *filename, const char __user *tag) {
 	}
 	if (i == len - 1) {
 		ret = -EINVAL;
-		goto fail_tag;
+		goto fail;
 	}
 	name = file + i + 1;
-	//TODO: ino <- Get inode
+	ino = inode_lookup(file);
 	//TODO: tag_ids <- Get tags from inode
+	tag_ids = get_tagids(ino->i_ino, &num_tags);
+	if (num_tags > MAX_NUM_TAGS) {
+		ret = -EINVAL;
+		goto fail;
+	}
 	curr = get_inodes(table, t);
 	//Easy case
 	if (!curr) {
 		/* TODO: Insert new tag into inode 
 		 *       if first tag, need to allocate block
-		 *       if block allocationg fails, return failure condition
+		 *       if block allocation fails, return failure condition
 		 */
 		if (num_tags) {
 			struct table_element *e = get_inodes(table, get_tag(table, tag_ids[0]));
@@ -178,6 +184,13 @@ int addtag(const char __user *filename, const char __user *tag) {
 			ret = -ENOMEM;
 			goto fail;
 		}
+		//TODO: Make persistent
+		if (allocate_block(ino->i_ino)) {
+			table_remove(table, t, ino->i_ino);
+			ret = -ENOMEM;
+			goto fail;
+		}
+		add_tagid(ino->i_ino, get_tagid(table, t));
 		putname(t);
 		putname(file);
 		return 0;
@@ -245,6 +258,13 @@ int addtag(const char __user *filename, const char __user *tag) {
 		  to check return value*/
 		goto fail;
 	}
+	//TODO: make persistent
+	if (allocate_block(ino->i_ino)) {
+		table_remove(table, t, ino->i_ino);
+		ret = -ENOMEM;
+		goto fail;
+	}
+	add_tagid(ino->i_ino, get_tagid(table, t));
 	putname(t);
 	putname(file);
 	return 0;
@@ -277,11 +297,17 @@ int rmtag(const char __user *filename, const char __user *tag) {
 		goto clean_file;
 	}
 	//TODO: ino <- Get inode
+	ino = inode_lookup(file);
+	if (!ino) {
+		ret = -ENOMEM;
+		goto clean_up;
+	}
 	curr = get_inodes(table, t);
 	//Easy case, tag doesn't exist;
 	if (!curr)
 		goto clean_up;
 	//TODO: tag_ids <- Get tag ids from block
+	tag_ids = get_tagids(ino->i_ino, &num_tags);
 	if (num_tags > 1) {
 		for(i = 0; i < num_tags; i++)
 			if (strcmp(get_tag(table, tag_ids[i]), t) == 0) {
@@ -316,6 +342,9 @@ int rmtag(const char __user *filename, const char __user *tag) {
 			goto clean_up;
 		}
 	}
+	remove_tagid(ino->i_ino, get_tagid(table, t));
+	if (num_tags == 1)
+		deallocate_block(ino->i_ino);
 	table_remove(table, t, ino->i_ino);
 	//TODO: remove tags from inode, possibly deallocating the block
 clean_up:
