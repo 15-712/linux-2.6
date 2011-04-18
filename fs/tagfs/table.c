@@ -15,6 +15,17 @@
 
 #define NUM_HASH_BITS	12
 #define INITIAL_TAG_CAPACITY	1024
+#define INT_TO_CHAR(x, c, i) \
+	do { \
+		for (i = 0 ; i < sizeof(x); i++) \
+			c[i] = (char)((x) >> (i * 8)); \
+	} while(0)
+
+#define CHAR_TO_INT(c, x, i) \
+	do { \
+		for (i = 0; i < sizeof(x); i++) \
+			i |= c[i] << (i * 8); \
+	} while(0)
 
 struct hash_table {
 	struct tag_node *table[1<<NUM_HASH_BITS];
@@ -357,13 +368,15 @@ void destroy_table(struct hash_table *table) {
 		kfree(temp);
 	}
 	kfree(table->lookup_table->tag);
-	for(i = 0; i < 1 << NUM_HASH_BITS; i++) {
+	count = 0;
+	for(i = 0; i < 1 << NUM_HASH_BITS && count < table->num_tags; i++) {
 		struct tag_node *curr = table->table[i];
 		while(curr) {
 			struct tag_node *temp = curr;
 			curr = curr->next;
 			delete_element(temp->e);
 			kfree(temp);
+			count++;
 		}
 	}
 	kfree(table->lookup_table);
@@ -457,8 +470,11 @@ int file_sync(struct file* file) {
 }
 
 void write_table(struct hash_table *table, char *filename) {
-	int i, count, entry_count;
+	int i, count, entry_count, offset;
+	char cint[sizeof(int)];
+	char clong[sizeof(long)];
 	struct inode_entry *head = NULL;
+	struct inode_entry *curr;
 	struct file *file = file_open(filename, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
 	if (!file) {
 		//Panic
@@ -473,8 +489,8 @@ void write_table(struct hash_table *table, char *filename) {
 			struct inode_entry **entries = set_to_array(get_inodes(table, tag));
 			int size = element_size(e);	
 			for (j = 0; j < size; j++) {
-				struct inode_entry *curr = head;
 				int found = 0;
+				curr = head;
 				while(curr) {
 					if (curr->ino == entries[j]->ino) {
 						found = 1;
@@ -494,10 +510,32 @@ void write_table(struct hash_table *table, char *filename) {
 	//Write entries to file
 	//TODO: 1. Write number of entries
 	//      2. Go through list, write index + entry info, i.e. ino and filename
+	offset = 0;
+	INT_TO_CHAR(entry_count, cint, i);
+	file_write(file, offset, cint, sizeof(int));
+	offset += sizeof(int);
+	curr = head;
+	while(curr) {
+		INT_TO_CHAR(curr->ino, clong, i);
+		file_write(file, offset, clong, sizeof(unsigned long));
+		offset += sizeof(unsigned long);
+		file_write(file, offset, curr->filename, MAX_FILENAME_LEN);
+		offset += MAX_FILENAME_LEN;
+		curr = curr->next;
+	}
 
 	//Write capacity + number of tags
+	INT_TO_CHAR(table->lookup_table->capacity, cint, i);
+	file_write(file, offset, cint, sizeof(int));
+	offset += sizeof(int);
+	INT_TO_CHAR(table->num_tags, cint, i);
+	file_write(file, offset, cint, sizeof(int));
+	offset += sizeof(int);
 	for (i = 0; i < table->lookup_table->capacity && count < table->num_tags; i++) {
 		char *tag = &(table->lookup_table->tag[i * MAX_TAG_LEN]);
+		int k;
+		file_write(file, offset, tag, MAX_TAG_LEN);
+		offset += MAX_TAG_LEN;
 		//TODO: 1. Write tag id
 		//      2. Write tag name
 		//	3. Write number of files with that tag
@@ -506,20 +544,28 @@ void write_table(struct hash_table *table, char *filename) {
 			int j;
 			struct table_element *e = get_inodes(table, tag);
 			struct inode_entry **entries = set_to_array(get_inodes(table, tag));
-			int size = element_size(e);	
+			int size = element_size(e);
+			INT_TO_CHAR(size, cint, k);
+			file_write(file, offset, cint, sizeof(int));
+			offset += sizeof(int);
 			for (j = 0; j < size; j++) {
-				struct inode_entry *curr = head;
 				int index = 0;
+				curr = head;
 				while(curr) {
 					if (curr->ino == entries[j]->ino) {
-						//Write index
+						INT_TO_CHAR(entry_count - index, cint, k);
+						file_write(file, offset, cint, sizeof(int));
+						offset += sizeof(int);
+						break;
 					}
 					index++;
 					curr = curr->next;
 				}
 			}
 		} else {
-			//Write placeholder
+			INT_TO_CHAR(0, cint, k);
+			file_write(file, offset, cint, sizeof(int));
+			offset += sizeof(int);
 		}
 	}
 	file_sync(file);
@@ -527,13 +573,128 @@ void write_table(struct hash_table *table, char *filename) {
 }
 
 int read_table(struct hash_table *table, char *filename) {
-	//int i, count, entry_count;
-	//struct inode_entry *head = NULL;
-	struct file *file = file_open(filename, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
+	int i, entry_count = 0, offset, ret = 0, capacity = 0, num_tags = 0;
+	struct inode_entry *head = NULL, *curr;
+	char cint[sizeof(int)], clong[sizeof(long)];
+	struct file *file = file_open(filename, O_RDONLY, 0);
 	if (!file) {
 		return -ENOMEM;
 	}
-
+	offset = 0;
+	file_read(file,	offset, cint, sizeof(int));
+	offset += sizeof(int);
+	CHAR_TO_INT(cint, entry_count, i);
+	// Get the entries
+	for(i = 0; i < entry_count; i++) {
+		int j;
+		struct inode_entry *entry = kmalloc(sizeof(struct inode_entry), GFP_KERNEL);
+		if (!entry) {
+			ret = -ENOMEM;
+			goto fail;
+		}
+		file_read(file, offset, clong, sizeof(long));
+		offset += sizeof(long);
+		CHAR_TO_INT(clong, entry->ino, j);
+		file_read(file, offset, entry->filename, MAX_FILENAME_LEN);
+		offset += MAX_FILENAME_LEN;
+		entry->filename[MAX_FILENAME_LEN] = '\0';
+		entry->next = head;
+		entry->count = 0;
+		head = entry;
+	}
+	file_read(file, offset, cint, sizeof(int));
+	offset += sizeof(int);
+	CHAR_TO_INT(cint, capacity, i);
+	file_read(file, offset, cint, sizeof(int));
+	offset += sizeof(int);
+	CHAR_TO_INT(cint, num_tags, i);
+	table->lookup_table = kmalloc(sizeof(struct tag_lookup_array), GFP_KERNEL);
+	if (!table->lookup_table)
+		goto fail;
+	table->lookup_table->free_list = NULL;
+	table->lookup_table->capacity = capacity;
+	table->lookup_table->tag = kmalloc(MAX_TAG_LEN * capacity, GFP_KERNEL);
+	if (!table->lookup_table->tag)
+		goto fail;
+	table->num_tags = 0;
+	for(i = 0; i < capacity && table->num_tags < num_tags; i++) {
+		int size, j;
+		unsigned long hash;
+		struct tag_node *node;
+		file_read(file, offset, &(table->lookup_table->tag[i * MAX_TAG_LEN]), MAX_TAG_LEN);
+		offset += MAX_TAG_LEN;
+		file_read(file, offset, cint, sizeof(int));
+		offset += sizeof(int);
+		CHAR_TO_INT(cint, size, j);
+		if (table->lookup_table->tag[i * MAX_TAG_LEN] == '\0') {
+			struct free_list_entry *f = kmalloc(sizeof(struct free_list_entry), GFP_KERNEL);
+			if (!f)
+				goto fail;
+			f->free_index = i;
+			f->next = table->lookup_table->free_list;
+			table->lookup_table->free_list = f;
+			continue;	
+		}
+		node = kmalloc(sizeof(struct tag_node), GFP_KERNEL);
+		if (!node)
+			goto fail;
+		node->e = new_element();
+		if (!node->e)
+			goto fail;
+		node->tag_id = i;
+		table->num_tags++;
+		strlcpy(node->tag, &(table->lookup_table->tag[i * MAX_TAG_LEN]), MAX_TAG_LEN);
+		hash = hash_tag(node->tag);
+		node->next = table->table[hash];
+		table->table[hash] = node;
+		for (j = 0; j < size; j++) {
+			int index, k;
+			file_read(file, offset, cint, sizeof(int));
+			offset += sizeof(int);
+			curr = head;
+			while(index > k) {
+				curr = curr->next;
+				k++;
+			}
+			if (insert_entry(node->e, curr))
+				goto fail;
+		}
+		
+	}
 	file_close(file);
 	return 0;
+fail:
+	if (head) {
+		while(head) {
+			curr = head;
+			head = head->next;
+			kfree(curr);
+		}
+	}
+	if (table->lookup_table) {
+		if (table->lookup_table->tag)
+			kfree(table->lookup_table->tag);
+		while(table->lookup_table->free_list) {
+			struct free_list_entry *ftemp = table->lookup_table->free_list;
+			ftemp = table->lookup_table->free_list;
+			table->lookup_table->free_list = table->lookup_table->free_list->next;
+			kfree(ftemp);
+		}
+		kfree(table->lookup_table);
+	}
+	if (table->num_tags > 0) {
+		int tag_count = 0;
+		for(i = 0; i < 1 << NUM_HASH_BITS && tag_count < table->num_tags; i++) {
+			struct tag_node *tag_curr = table->table[i];
+			while(tag_curr) {
+				struct tag_node *temp = tag_curr;
+				tag_curr = tag_curr->next;
+				delete_element(temp->e);
+				kfree(temp);
+				tag_count++;
+			}
+		}
+	}
+	file_close(file);
+	return -1;
 }
