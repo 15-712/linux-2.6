@@ -82,15 +82,16 @@ unsigned int remove_tag(struct hash_table *table, int index) {
 		return NO_MEMORY;
 	}
 	new_entry->free_index = index;
-	new_entry->next = NULL;
-	if(!free_list) {
+	new_entry->next = free_list;
+	free_list = new_entry;
+	/*if(!free_list) {
 		table->lookup_table->free_list = new_entry;
 	} else {
 		while(free_list->next) {
 			free_list = free_list->next;
 		}
 		free_list->next = new_entry;
-	}
+	}*/
 	return 0;
 }
 
@@ -313,10 +314,42 @@ struct hash_table * create_table(void)
 }
 
 void destroy_table(struct hash_table *table) {
-	int i;
+	int i, count;
 	struct free_list_entry *curr;
+	struct inode_entry *head = NULL;
 	if (!table)
 		return;
+	count = 0;
+	for (i = 0; i < table->lookup_table->capacity && count < table->num_tags; i++) {
+		char *tag = &(table->lookup_table->tag[i * MAX_TAG_LEN]);
+		if (*tag != '\0') {
+			int j;
+			struct table_element *e = get_inodes(table, tag);
+			struct inode_entry **entries = set_to_array(get_inodes(table, tag));
+			int size = element_size(e);	
+			for (j = 0; j < size; j++) {
+				struct inode_entry *curr = head;
+				int found = 0;
+				while(curr) {
+					if (curr->ino == entries[j]->ino) {
+						found = 1;
+						break;
+					}
+					curr = curr->next;
+				}
+				if (found)
+					continue;
+				entries[j]->next = head;
+				head = entries[j]->next;
+			}
+			count++;
+		}
+	}
+	while(head) {
+		struct inode_entry *temp = head;
+		head = head->next;
+		kfree(temp);
+	}
 	curr = table->lookup_table->free_list;
 	while(curr) {
 		struct free_list_entry *temp = curr;
@@ -374,3 +407,133 @@ int change_tag(struct hash_table *table, char *tag1, char *tag2) {
 	return 0;
 }
 
+struct file *file_open(const char *path, int flags, int rights) {
+	struct file* filp = NULL;
+	mm_segment_t oldfs;
+
+	oldfs = get_fs();
+	set_fs(get_ds());
+	filp = filp_open(path, flags, rights);
+	set_fs(oldfs);
+	if (IS_ERR(filp)) {
+		return NULL;
+	}
+	return filp;
+}
+
+void file_close(struct file *file) {
+	filp_close(file, NULL);
+}
+
+int file_read(struct file* file, unsigned long long offset, unsigned char* data, unsigned int size) {
+	mm_segment_t oldfs;
+	int ret;
+
+	oldfs = get_fs();
+	set_fs(get_ds());
+
+	ret = vfs_read(file, data, size, &offset);
+
+	set_fs(oldfs);
+	return ret;
+}
+
+int file_write(struct file* file, unsigned long long offset, unsigned char* data, unsigned int size) {
+	mm_segment_t oldfs;
+	int ret;
+
+	oldfs = get_fs();
+	set_fs(get_ds());
+
+	ret = vfs_write(file, data, size, &offset);
+
+	set_fs(oldfs);
+	return ret;
+}
+
+int file_sync(struct file* file) {
+	vfs_fsync(file, 0);
+	return 0;
+}
+
+void write_table(struct hash_table *table, char *filename) {
+	int i, count, entry_count;
+	struct inode_entry *head = NULL;
+	struct file *file = file_open(filename, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
+	if (!file) {
+		//Panic
+	}
+	count = entry_count = 0;
+	// Get all entries and then write them.
+	for (i = 0; i < table->lookup_table->capacity && count < table->num_tags; i++) {
+		char *tag = &(table->lookup_table->tag[i * MAX_TAG_LEN]);
+		if (*tag != '\0') {
+			int j;
+			struct table_element *e = get_inodes(table, tag);
+			struct inode_entry **entries = set_to_array(get_inodes(table, tag));
+			int size = element_size(e);	
+			for (j = 0; j < size; j++) {
+				struct inode_entry *curr = head;
+				int found = 0;
+				while(curr) {
+					if (curr->ino == entries[j]->ino) {
+						found = 1;
+						break;
+					}
+					curr = curr->next;
+				}
+				if (found)
+					continue;
+				entries[j]->next = head;
+				head = entries[j]->next;
+				entry_count++;
+			}
+			count++;
+		}
+	}
+	//Write entries to file
+	//TODO: 1. Write number of entries
+	//      2. Go through list, write index + entry info, i.e. ino and filename
+
+	//Write capacity + number of tags
+	for (i = 0; i < table->lookup_table->capacity && count < table->num_tags; i++) {
+		char *tag = &(table->lookup_table->tag[i * MAX_TAG_LEN]);
+		//TODO: 1. Write tag id
+		//      2. Write tag name
+		//	3. Write number of files with that tag
+		//	4. Write entry indices
+		if (*tag != '\0') {
+			int j;
+			struct table_element *e = get_inodes(table, tag);
+			struct inode_entry **entries = set_to_array(get_inodes(table, tag));
+			int size = element_size(e);	
+			for (j = 0; j < size; j++) {
+				struct inode_entry *curr = head;
+				int index = 0;
+				while(curr) {
+					if (curr->ino == entries[j]->ino) {
+						//Write index
+					}
+					index++;
+					curr = curr->next;
+				}
+			}
+		} else {
+			//Write placeholder
+		}
+	}
+	file_sync(file);
+	file_close(file);
+}
+
+int read_table(struct hash_table *table, char *filename) {
+	//int i, count, entry_count;
+	//struct inode_entry *head = NULL;
+	struct file *file = file_open(filename, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
+	if (!file) {
+		return -ENOMEM;
+	}
+
+	file_close(file);
+	return 0;
+}

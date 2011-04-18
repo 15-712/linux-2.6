@@ -192,8 +192,8 @@ struct table_element *set_intersect(struct table_element *e1, struct table_eleme
 	return result;
 }
 
-const struct inode_entry **set_to_array(struct table_element *e) {
-	return (const struct inode_entry **) e->entries;
+struct inode_entry **set_to_array(struct table_element *e) {
+	return e->entries;
 }
 
 unsigned int element_size(struct table_element *e) {

@@ -2,8 +2,10 @@
 #include <linux/slab.h>
 #include <asm/uaccess.h>
 #include <linux/err.h>
+#include <asm/segment.h>
 #include <asm-generic/fcntl.h>
 #include <asm-generic/errno-base.h>
+#include <linux/buffer_head.h>
 #include <linux/file.h>
 #include <linux/fsnotify.h>
 
@@ -119,7 +121,7 @@ int addtag(const char __user *filename, const char __user *tag) {
 	int *tag_ids = NULL;
 	struct table_element *curr, *check;
 	struct inode_entry *ent;
-	const struct inode_entry **entries;
+	struct inode_entry **entries;
 	struct inode *ino = NULL;
 	int i, ret = 0, num_tags = 0, conflict, min, len;
 
@@ -289,7 +291,7 @@ int rmtag(const char __user *filename, const char __user *tag) {
 	char *file, *t;
 	int *tag_ids = NULL;
 	struct table_element *curr;
-	const struct inode_entry **entries;
+	struct inode_entry **entries;
 	struct inode *ino = NULL;
 	int i, ret = 0, num_tags = 0, conflict;
 
@@ -439,7 +441,7 @@ int getcwt(char __user *buf, unsigned long size) {
 int lstag(const char __user *expr, void __user *buf, unsigned long size, int offset) {
 	struct expr_tree *tree;
 	struct table_element *results;
-	const struct inode_entry **inodes;
+	struct inode_entry **inodes;
 	char *kexpr = getname(expr);
 	char *full_expr = NULL;
 	int i;
@@ -501,3 +503,4 @@ int distag(char __user *filename, char __user *buf, unsigned long size) {
 fail_file:
 	return ret;
 }
+

@@ -1,6 +1,11 @@
 #ifndef _TABLE_H
 #define _TABLE_H
 
+#include <linux/fs.h>
+#include <asm/uaccess.h>
+#include <asm/segment.h>
+#include <linux/buffer_head.h>
+
 #include "table_element.h"
 
 #define MAX_TAG_LEN 255

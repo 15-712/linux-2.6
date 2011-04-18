@@ -21,6 +21,7 @@ struct inode_entry {
 	unsigned long ino;
 	char filename[MAX_FILENAME_LEN+1];
 	unsigned int count;
+	struct inode_entry *next;
 };
 
 
@@ -37,7 +38,7 @@ struct table_element *new_element(void);
 /* Frees all memory associated with the table_element */
 void delete_element(struct table_element *);
 /* Returns the set of entries as an array */
-const struct inode_entry **set_to_array(struct table_element *);
+struct inode_entry **set_to_array(struct table_element *);
 /* Returns the number of entrices in the table element */
 unsigned int element_size(struct table_element *);
 
