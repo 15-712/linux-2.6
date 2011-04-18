@@ -4010,14 +4010,16 @@ struct inode *inode_lookup(const char *pathname) {
 	struct file *filp;
 
 	filp = get_empty_filp();
+	if (!filp)
+		return ERR_PTR(-ENFILE);
 	filp->f_flags = O_RDWR;
 	nd.intent.open.file = filp;
-	nd.intent.open.flags = O_RDWR;
+	nd.intent.open.flags = open_to_namei_flags(O_RDWR);
 	nd.intent.open.create_mode = 0;
 	
 	error = do_path_lookup(AT_FDCWD, pathname, O_RDWR, &nd);
 	audit_inode(pathname, nd.path.dentry);
-	filp = finish_open(&nd, O_RDWR, 0);
+	filp = finish_open(&nd, O_RDWR, MAY_OPEN | ACC_MODE(O_RDWR));
 	release_open_intent(&nd);
 
 	error = filp_close(filp, current->files);
