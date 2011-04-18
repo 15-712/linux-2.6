@@ -137,8 +137,9 @@ int addtag(const char __user *filename, const char __user *tag) {
 	len = strlen(t);
 	for (i = 0; i < len; i++) {
 		int j;
-		for (j = 0; sizeof(inv) / sizeof(char); j++) {
+		for (j = 0; j < sizeof(inv) / sizeof(char); j++) {
 			if (t[i] == inv[j]) {
+				printk("Invalid tag character: %c\n", inv[j]);
 				ret = -EINVAL;
 				goto fail_tag;
 			}
@@ -152,6 +153,7 @@ int addtag(const char __user *filename, const char __user *tag) {
 		i--;
 	}
 	if (i == len - 1) {
+		printk("Cannot tag a directory.\n");
 		ret = -EINVAL;
 		goto fail;
 	}
@@ -160,6 +162,7 @@ int addtag(const char __user *filename, const char __user *tag) {
 	//TODO: tag_ids <- Get tags from inode
 	tag_ids = get_tagids(ino->i_ino, &num_tags);
 	if (num_tags > MAX_NUM_TAGS) {
+		printk("File has too many tags.\n");
 		ret = -EINVAL;
 		goto fail;
 	}
@@ -204,6 +207,7 @@ int addtag(const char __user *filename, const char __user *tag) {
 	}
 	for (i = 0; i < num_tags; i++) {
 		if (strncmp(t, get_tag(table, tag_ids[i]), MAX_TAG_LEN) == 0) {
+			printk("File already has that tag.\n");
 			ret = -EINVAL;
 			goto fail;
 		}
@@ -238,6 +242,7 @@ int addtag(const char __user *filename, const char __user *tag) {
 		delete_element(curr);
 	if (conflict) {
 		//TODO: Clean up
+		printk("Conflict.\n");
 		ret = -EINVAL;
 		goto fail;
 	}
