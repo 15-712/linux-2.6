@@ -377,7 +377,7 @@ int chtag(const char __user *tagex) {
 	int len, ret = 0;
 	printk("chtag system call\n");
 	if (IS_ERR(ktagex)) {
-		ret = -ENOMEM;
+		ret = PTR_ERR(ktagex);
 		goto end;
 	}
 	len = strlen(ktagex);
@@ -455,25 +455,47 @@ int lstag(const char __user *expr, void __user *buf, unsigned long size, int off
 	
 	printk("lstag system call\n");
 	error = -ENOMEM;
-	if (IS_ERR(kexpr))
-		goto end;
-
+	if (IS_ERR(kexpr)) {
+		error = PTR_ERR(kexpr);
+		printk("IS_ERR(kexpr)\n");
+		goto end2;
+	}
 	/* If expr starts with a '.' then prepend cwt to expr */
-	len = strlen(cwt) + strlen(kexpr);	
-	full_expr = kmalloc(sizeof(char) * len, GFP_KERNEL);
-	if(!full_expr)
-		goto end;
-	len = strlcpy(full_expr, cwt, MAX_TAGEX_LEN);
-	strlcpy(&full_expr[len], &expr[1], MAX_TAGEX_LEN-len);
+	len = strlen(kexpr);
+	if(len == 0) {
+		printk("full_expr = cwt\n");
+		full_expr = cwt;
+	} else if(kexpr[0] == '.') {
+		printk("full_expr = cwt & input\n");
+		len += strlen(cwt);
+		full_expr = kmalloc(sizeof(char) * len, GFP_KERNEL);
+		if(!full_expr)
+			goto end;
+		len = strlcpy(full_expr, cwt, MAX_TAGEX_LEN);
+		strlcpy(&full_expr[len], &expr[1], MAX_TAGEX_LEN-len);
+	} else {
+		printk("full_expr = input\n");
+		full_expr = kmalloc(sizeof(char) * len, GFP_KERNEL);
+		if(!full_expr)
+			goto end;
+		strlcpy(full_expr, expr, MAX_TAGEX_LEN);
+	}
 
+	printk("full_expr = '%s'\n", full_expr);
 	/* Build tree */
 	error = -EINVAL;
 	tree = build_tree(full_expr);
+	printk("Tree has been built.\n");
 	if(!tree)
 		goto end;
 		
 	results = parse_tree(tree, table);
+	printk("Tree has been parsed.\n");
 
+	if(!results) {
+		error = -ENOENT;
+		goto end;
+	}
 	len = element_size(results);
 	if(len == 0)
 		goto end;
@@ -488,6 +510,7 @@ int lstag(const char __user *expr, void __user *buf, unsigned long size, int off
 	error = max(i-offset, 0);
 end:
 	putname(kexpr);
+end2:
 	if(full_expr)
 		kfree(full_expr);
 	return error;
