@@ -670,6 +670,23 @@ __SYSCALL(__NR_fanotify_mark, sys_fanotify_mark)
 #define __NR_prlimit64				302
 __SYSCALL(__NR_prlimit64, sys_prlimit64)
 
+/* tagfs specfic system calls */
+#define __NR_addtag 				303
+__SYSCALL(__NR_addtag, sys_addtag)
+#define __NR_rmtag 				304
+__SYSCALL(__NR_rmtag, sys_rmtag)
+#define __NR_lstag 				305
+__SYSCALL(__NR_lstag, sys_lstag)
+#define __NR_chtag 				306
+__SYSCALL(__NR_chtag, sys_chtag)
+#define __NR_getcwt 				307
+__SYSCALL(__NR_getcwt, sys_getcwt)
+#define __NR_opentag 				308
+__SYSCALL(__NR_opentag, sys_opentag)
+#define __NR_mvtag 				309
+__SYSCALL(__NR_mvtag, sys_mvtag)
+#define __NR_distag 				310
+
 #ifndef __NO_STUBS
 #define __ARCH_WANT_OLD_READDIR
 #define __ARCH_WANT_OLD_STAT
