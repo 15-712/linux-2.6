@@ -36,6 +36,8 @@
 
 #include "internal.h"
 
+#include <linux/printk.h>
+
 /* [Feb-1997 T. Schoebel-Theuer]
  * Fundamental changes in the pathname lookup mechanisms (namei)
  * were necessary because of omirr.  The reason is that omirr needs
@@ -4003,30 +4005,6 @@ const struct inode_operations page_symlink_inode_operations = {
 	.follow_link	= page_follow_link_light,
 	.put_link	= page_put_link,
 };
-
-struct inode *inode_lookup(const char *pathname) {
-	int error;	
-	struct nameidata nd;
-	struct file *filp;
-
-	filp = get_empty_filp();
-	if (!filp)
-		return ERR_PTR(-ENFILE);
-	filp->f_flags = O_RDWR;
-	nd.intent.open.file = filp;
-	nd.intent.open.flags = open_to_namei_flags(O_RDWR);
-	nd.intent.open.create_mode = 0;
-	
-	error = do_path_lookup(AT_FDCWD, pathname, O_RDWR, &nd);
-	audit_inode(pathname, nd.path.dentry);
-	filp = finish_open(&nd, O_RDWR, MAY_OPEN | ACC_MODE(O_RDWR));
-	release_open_intent(&nd);
-
-	error = filp_close(filp, current->files);
-
-	return nd.path.dentry->d_inode;
-}
-EXPORT_SYMBOL(inode_lookup);
 
 EXPORT_SYMBOL(user_path_at);
 EXPORT_SYMBOL(follow_down_one);
