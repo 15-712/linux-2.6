@@ -165,7 +165,7 @@ int addtag(const char __user *filename, const char __user *tag) {
 	ino = ino_by_name(file);
 	//TODO: tag_ids <- Get tags from inode
 	tag_ids = get_tagids(ino, &num_tags);
-	if (num_tags > MAX_NUM_TAGS) {
+	if (num_tags >= MAX_NUM_TAGS) {
 		printk("File has too many tags.\n");
 		ret = -EINVAL;
 		goto fail;
