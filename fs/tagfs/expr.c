@@ -237,8 +237,8 @@ struct expr_tree *build_tree(const char* expr) {
 				!is_op(expr[end]) &&
 				expr[end] != '(' &&
 				expr[end] != ')') end++;
-			strlcpy(node->tag, &expr[index], end-index); 
-			node->tag[end-index] = '\0';
+			strlcpy(node->tag, &expr[index], end-index+1); 
+			node->tag[end-index+1] = '\0';
 			sTree = tree_push(sTree, node); 	
 			index=end;
 		}
@@ -281,6 +281,7 @@ cleanup:
 struct table_element* parse_tree(struct expr_tree *tree, struct hash_table *table) {
 	struct table_element* result;
 	if(tree->type == TAG) {
+		printk("Returning inodes for %s\n", tree->tag);
 		return get_inodes(table, tree->tag);
 	} else if(tree->type == OPERATOR) {
 		struct table_element *a =  parse_tree(tree->left, table);

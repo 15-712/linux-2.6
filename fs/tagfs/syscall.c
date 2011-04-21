@@ -137,6 +137,7 @@ int addtag(const char __user *filename, const char __user *tag) {
 		goto fail_tag;
 	}
 	len = strlen(t);
+	printk("checking for invalid characters\n");
 	for (i = 0; i < len; i++) {
 		int j;
 		for (j = 0; j < sizeof(inv) / sizeof(char); j++) {
@@ -149,6 +150,7 @@ int addtag(const char __user *filename, const char __user *tag) {
 	}
 	len = strlen(file);
 	i = len - 1;
+	printk("making sure file is not a directory\n");
 	while(i >= 0) {
 		if (file[i] == '/')
 			break;
@@ -159,10 +161,22 @@ int addtag(const char __user *filename, const char __user *tag) {
 		ret = -EINVAL;
 		goto fail;
 	}
+//======================================================================
+//=======Bug in here somehwere =========================================
+//======================================================================
 	name = file + i + 1;
-	ino = inode_lookup(file);
+	printk("looking up inode\n");
+	//ino = inode_lookup(file);
+	int i_ino = 100;
+	/*if(!ino) {
+		printk("inode_lookup failed!\n");
+		ret = -ENOENT;
+		goto fail;
+	}*/
+//======================================================================
 	//TODO: tag_ids <- Get tags from inode
-	tag_ids = get_tagids(ino->i_ino, &num_tags);
+	printk("getting tagids\n");
+	tag_ids = get_tagids(i_ino, &num_tags);
 	if (num_tags > MAX_NUM_TAGS) {
 		printk("File has too many tags.\n");
 		ret = -EINVAL;
@@ -171,24 +185,28 @@ int addtag(const char __user *filename, const char __user *tag) {
 	curr = get_inodes(table, t);
 	//Easy case
 	if (!curr) {
+		printk("creating new tag\n");
 		/* TODO: Insert new tag into inode 
 		 *       if first tag, need to allocate block
 		 *       if block allocation fails, return failure condition
 		 */
 		if (num_tags) {
+			printk("looking up inode_entry\n");
 			struct table_element *e = get_inodes(table, get_tag(table, tag_ids[0]));
-			ent = find_entry(e, ino->i_ino);
+			ent = find_entry(e, i_ino);
 		} else {
+			printk("creating inode_entry\n");
 			ent = kmalloc(sizeof(struct inode_entry), GFP_KERNEL);
 			if (!ent) {
 				//TODO: Clean up
 				ret = -ENOMEM;
 				goto fail;
 			}
-			ent->ino = ino->i_ino;
+			ent->ino = i_ino;
 			strncpy(ent->filename, name, MAX_FILENAME_LEN);
 			ent->count = 0;
 		}
+		printk("Inserting tag into table\n");
 		ret = table_insert(table, t, ent);
 		if (ret) {
 			/*TODO: Clean up, may not be memory error, need 
@@ -197,12 +215,15 @@ int addtag(const char __user *filename, const char __user *tag) {
 			goto fail;
 		}
 		//TODO: Make persistent
-		if (allocate_block(ino->i_ino)) {
-			table_remove(table, t, ino->i_ino);
+		
+		if (allocate_block(i_ino)) {
+			table_remove(table, t, i_ino);
 			ret = -ENOMEM;
 			goto fail;
 		}
-		add_tagid(ino->i_ino, get_tagid(table, t));
+		
+		printk("Adding tag id\n");
+		add_tagid(i_ino, get_tagid(table, t));
 		putname(t);
 		putname(file);
 		return 0;
@@ -259,11 +280,11 @@ int addtag(const char __user *filename, const char __user *tag) {
 			ret = -ENOMEM;
 			goto fail;
 		}
-		ent->ino = ino->i_ino;
+		ent->ino = i_ino;
 		strncpy(ent->filename, name, MAX_FILENAME_LEN);
 		ent->count = 0;
 	} else {
-		ent = find_entry(check, ino->i_ino);
+		ent = find_entry(check, i_ino);
 	}
 	ret = table_insert(table, t, ent);
 	if (ret) {
@@ -273,16 +294,17 @@ int addtag(const char __user *filename, const char __user *tag) {
 		goto fail;
 	}
 	//TODO: make persistent
-	if (allocate_block(ino->i_ino)) {
-		table_remove(table, t, ino->i_ino);
+	if (allocate_block(i_ino)) {
+		table_remove(table, t, i_ino);
 		ret = -ENOMEM;
 		goto fail;
 	}
-	add_tagid(ino->i_ino, get_tagid(table, t));
+	add_tagid(i_ino, get_tagid(table, t));
 	putname(t);
 	putname(file);
 	return 0;
 
+	printk("Finished addtag\n");
 fail:
 	//TODO: clean up
 	putname(t);
@@ -493,10 +515,12 @@ int lstag(const char __user *expr, void __user *buf, unsigned long size, int off
 	printk("Tree has been parsed.\n");
 
 	if(!results) {
+		printk("Found no results\n");
 		error = -ENOENT;
 		goto end;
 	}
 	len = element_size(results);
+	printk("Found %d results\n", len);
 	if(len == 0)
 		goto end;
 
