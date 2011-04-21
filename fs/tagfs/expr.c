@@ -94,6 +94,7 @@ static int is_intersect_op(char c) {
 static int is_union_op(char c) {
 	switch(c) {
 		case '|':
+		case '+':
 			return 1;
 			break;
 		default:
