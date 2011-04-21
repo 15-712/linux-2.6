@@ -518,6 +518,7 @@ int lstag(const char __user *expr, void __user *buf, unsigned long size, int off
 		if(copy_to_user(&((struct inode_entry *)buf)[i-offset], inodes[i], sizeof(struct inode_entry)))
 			goto end;
 	}
+	delete_element(results);
 	error = max(i-offset, 0);
 end:
 	putname(kexpr);

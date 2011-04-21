@@ -238,7 +238,7 @@ struct expr_tree *build_tree(const char* expr) {
 				expr[end] != '(' &&
 				expr[end] != ')') end++;
 			strlcpy(node->tag, &expr[index], end-index+1); 
-			node->tag[end-index+1] = '\0';
+			node->tag[end-index] = '\0';
 			sTree = tree_push(sTree, node); 	
 			index=end;
 		}
@@ -281,21 +281,30 @@ cleanup:
 struct table_element* parse_tree(struct expr_tree *tree, struct hash_table *table) {
 	struct table_element* result;
 	if(tree->type == TAG) {
+		printk("Tree of type tag\n");
 		printk("Returning inodes for %s\n", tree->tag);
 		return get_inodes(table, tree->tag);
 	} else if(tree->type == OPERATOR) {
+		printk("Tree of type operator\n");
 		struct table_element *a =  parse_tree(tree->left, table);
 		struct table_element *b =  parse_tree(tree->right, table);
-		if(tree->op == INTERSECTION) {
-			result = set_intersect(a, b);
+		printk("Acquired childern nodes\n");
+		if(!a) {
+			result = b;
+		} else if(!b) {
+			result = a;
 		} else {
-			result = set_union(a, b);
+		
+			if(tree->op == INTERSECTION) {
+				result = set_intersect(a, b);
+			} else {
+				result = set_union(a, b);
+			}
+			if(tree->left->type != TAG)
+				delete_element(a);	
+			if(tree->right->type != TAG)
+				delete_element(b);	
 		}
-
-		if(tree->left->type != TAG)
-			delete_element(a);	
-		if(tree->right->type != TAG)
-			delete_element(b);	
 		return result;
 	}
 	return NULL;
