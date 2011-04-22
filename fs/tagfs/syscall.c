@@ -26,7 +26,7 @@ int (*prev_chtag)(const char __user *);
 int (*prev_mvtag)(const char __user *, const char __user *);
 int (*prev_getcwt)(char __user *, unsigned long size);
 int (*prev_lstag)(const char __user *, void __user *, unsigned long, int);
-//int (*prev_distag)(char __user *, char __user *, unsigned long); 
+int (*prev_distag)(const char __user *, char __user *, unsigned long); 
 
 void install_syscalls(void) {
 	printk("Installing tag syscalls\n");
@@ -37,7 +37,7 @@ void install_syscalls(void) {
 	prev_mvtag = mvtag_ptr;
 	prev_getcwt = getcwt_ptr;
 	prev_lstag = lstag_ptr;
-//	prev_distag = distag_ptr;
+	prev_distag = distag_ptr;
 	opentag_ptr = opentag;
 	addtag_ptr = addtag;
 	rmtag_ptr = rmtag;
@@ -45,7 +45,7 @@ void install_syscalls(void) {
 	mvtag_ptr = mvtag;
 	getcwt_ptr = getcwt;
 	lstag_ptr = lstag;
-//	distag_ptr = distag;
+	distag_ptr = distag;
 }
 
 void uninstall_syscalls(void) {
@@ -56,7 +56,7 @@ void uninstall_syscalls(void) {
 	mvtag_ptr = prev_mvtag;
 	getcwt_ptr = prev_getcwt;
 	lstag_ptr = prev_lstag;
-//	distag_ptr = prev_distag;
+	distag_ptr = prev_distag;
 }
 
 static long do_sys_opentag(const char __user *tagexp, int flags)
@@ -531,6 +531,7 @@ int lstag(const char __user *expr, void __user *buf, unsigned long size, int off
 		if(copy_to_user(&((struct inode_entry *)buf)[i-offset], inodes[i], sizeof(struct inode_entry)))
 			goto end;
 	}
+	delete_element(results);
 	error = max(i-offset, 0);
 end:
 	putname(kexpr);
@@ -540,9 +541,13 @@ end2:
 	return error;
 }
 
-int distag(char __user *filename, char __user *buf, unsigned long size) {
+int distag(const char __user *filename, char __user *buf, unsigned long size) {
 	char *file;
+	char tag_list[MAX_TAG_LEN*7];
+	const char *tag;
 	int ret = 0;
+	int i, ino, len, num_tags, offset;
+	int *tag_ids = NULL;
 	printk("distag system call\n");
 
 	file = getname(filename);
@@ -551,6 +556,24 @@ int distag(char __user *filename, char __user *buf, unsigned long size) {
 		goto fail_file;
 	}
 	
+	ino = ino_by_name(file);
+	tag_ids = get_tagids(ino, &num_tags);
+	printk("num_tags: %d\n", num_tags);
+	offset = 0;
+	for(i = 0; i < num_tags; i++) {
+		tag = get_tag(table, tag_ids[i]);
+		printk("tag: %s\n", tag);
+		len = strlen(tag);
+		if(offset + len + 1 > MAX_TAG_LEN*7)
+			break;
+		strncpy(&tag_list[offset], tag, MAX_TAG_LEN);
+		offset += len+1;
+		if(i != num_tags - 1)
+			tag_list[offset-1] = ',';
+	}
+	
+	if(copy_to_user(buf, tag_list, size))
+		ret = -EFAULT;
 	putname(file);	
 fail_file:
 	return ret;

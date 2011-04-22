@@ -686,6 +686,7 @@ __SYSCALL(__NR_opentag, sys_opentag)
 #define __NR_mvtag 				309
 __SYSCALL(__NR_mvtag, sys_mvtag)
 #define __NR_distag 				310
+__SYSCALL(__NR_distag, sys_distag)
 
 #ifndef __NO_STUBS
 #define __ARCH_WANT_OLD_READDIR

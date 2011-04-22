@@ -32,7 +32,7 @@ int *get_tagids(unsigned long ino, int *num_tags) {
 		}
 		curr = curr->next;
 	}
-	*num_tags = 0;
+	*num_tags = 0
 	return NULL;
 }
 
