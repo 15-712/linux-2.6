@@ -468,7 +468,7 @@ void inode_set_bytes(struct inode *inode, loff_t bytes)
 
 EXPORT_SYMBOL(inode_set_bytes);
 
-unsigned long ino_by_name(const char *pathname) {
+unsigned long ino_by_name(const char __user *pathname) {
 	struct kstat stat;
 	int error;
 
