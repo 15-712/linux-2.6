@@ -2326,6 +2326,7 @@ extern int (*chtag_ptr)(const char __user *tagex);
 extern int (*mvtag_ptr)(const char __user *tag1, const char __user *tag2);
 extern int (*lstag_ptr)(const char __user *tagex, void __user *buf, unsigned long size, int offset);
 extern int (*getcwt_ptr)(char __user *buf, unsigned long size);
+extern int (*distag_ptr)(const char __user *filename, char __user *buf, unsigned long size);
 
 #ifdef CONFIG_FS_XIP
 extern ssize_t xip_file_read(struct file *filp, char __user *buf, size_t len,
