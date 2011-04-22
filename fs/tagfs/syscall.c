@@ -162,7 +162,7 @@ int addtag(const char __user *filename, const char __user *tag) {
 		goto fail;
 	}
 	name = file + i + 1;
-	ino = ino_by_name(file);
+	ino = ino_by_name(filename);
 	//TODO: tag_ids <- Get tags from inode
 	tag_ids = get_tagids(ino, &num_tags);
 	if (num_tags >= MAX_NUM_TAGS) {
@@ -203,8 +203,7 @@ int addtag(const char __user *filename, const char __user *tag) {
 			goto fail;
 		}
 		//TODO: Make persistent
-		add_tagid(ino, get_tagid(table, t));
-		if (allocate_block(ino)) {
+		if (num_tags < 1 && allocate_block(ino)) {
 			table_remove(table, t, ino);
 			ret = -ENOMEM;
 			goto fail;
@@ -243,7 +242,7 @@ int addtag(const char __user *filename, const char __user *tag) {
 	entries = set_to_array(curr);
 	conflict = 0;
 	for(i = 0; i < element_size(curr); i++) {
-		if (entries[i]->count == num_tags + 1) {
+		if (entries[i]->count == num_tags + 1 && strncmp(name, entries[i]->filename, MAX_FILENAME_LEN) == 0) {
 			conflict = 1;
 			break;
 		}
@@ -281,7 +280,7 @@ int addtag(const char __user *filename, const char __user *tag) {
 		goto fail;
 	}
 	//TODO: make persistent
-	if (allocate_block(ino)) {
+	if (num_tags < 1 && allocate_block(ino)) {
 		table_remove(table, t, ino);
 		ret = -ENOMEM;
 		goto fail;
@@ -302,12 +301,12 @@ fail_file:
 }
 
 int rmtag(const char __user *filename, const char __user *tag) {
-	char *file, *t;
+	char *file, *t, *name;
 	int *tag_ids = NULL;
 	struct table_element *curr;
 	struct inode_entry **entries;
 	unsigned long ino = 0;
-	int i, ret = 0, num_tags = 0, conflict;
+	int i, ret = 0, num_tags = 0, conflict, len;
 
 	printk("rmtag system call\n");
 
@@ -316,13 +315,27 @@ int rmtag(const char __user *filename, const char __user *tag) {
 		ret = PTR_ERR(file);
 		goto end;
 	}
+	len = strlen(file);
+	i = len - 1;
+	printk("making sure file is not a directory\n");
+	while(i >= 0) {
+		if (file[i] == '/')
+			break;
+		i--;
+	}
+	if (i == len - 1) {
+		printk("Cannot tag a directory.\n");
+		ret = -EINVAL;
+		goto clean_file;
+	}
+	name = file + i + 1;
 	t = getname(tag);
 	if (IS_ERR(t)) {
 		ret = PTR_ERR(t);
 		goto clean_file;
 	}
 	//TODO: ino <- Get inode
-	ino = ino_by_name(file);
+	ino = ino_by_name(filename);
 	if (!ino) {
 		ret = -ENOMEM;
 		goto clean_up;
@@ -356,7 +369,7 @@ int rmtag(const char __user *filename, const char __user *tag) {
 		entries = set_to_array(curr);
 		conflict = 0;
 		for(i = 0; i < element_size(curr); i++)
-			if (entries[i]->count == num_tags - 1) {
+			if (entries[i]->count == num_tags - 1 && strncmp(name, entries[i]->filename, MAX_FILENAME_LEN) == 0) {
 				conflict = 1;
 				break;
 			}
