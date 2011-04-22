@@ -842,5 +842,6 @@ asmlinkage long sys_chtag(const char __user * expr);
 asmlinkage long sys_mvtag(const char __user *tag1, const char __user *tag2);
 asmlinkage long sys_getcwt(char __user *buf, unsigned long size);
 asmlinkage long sys_lstag(const char __user *expr, void __user *buf, unsigned long size, int offset);
+asmlinkage long sys_distag(const char __user *file, char __user *buf, unsigned long size);
 
 #endif

@@ -347,3 +347,4 @@ ENTRY(sys_call_table)
 	.long sys_getcwt		/* 345 */
 	.long sys_opentag
 	.long sys_mvtag
+	.long sys_distag
