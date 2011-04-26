@@ -1875,6 +1875,8 @@ EXPORT_SYMBOL(d_lookup);
  */
 struct dentry *__d_lookup(struct dentry *parent, struct qstr *name)
 {
+	if (parent == NULL)
+		printk("@__d_lookup\n");
 	unsigned int len = name->len;
 	unsigned int hash = name->hash;
 	const unsigned char *str = name->name;

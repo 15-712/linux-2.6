@@ -1019,6 +1019,8 @@ errout:
 
 static struct dentry *ext4_lookup(struct inode *dir, struct dentry *dentry, struct nameidata *nd)
 {
+	if (dentry->d_name.name[0] == '/')
+		printk("@ext4_lookup\n");
 	struct inode *inode;
 	struct ext4_dir_entry_2 *de;
 	struct buffer_head *bh;

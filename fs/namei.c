@@ -1210,25 +1210,32 @@ static struct dentry *d_alloc_and_lookup(struct dentry *parent,
 
 static struct dentry *d_alloc_and_lookuptag(struct dentry *parent, struct qstr *name, unsigned long ino)
 {
+	printk("@d_alloc_and_lookuptag\n");
         struct inode *inode;
         struct dentry *dentry;
         struct dentry *old;
-
+	
+	//if (parent == NULL)
+		//printk("parent == NULL\n");
         inode = parent->d_inode;
 
         /* Don't create child dentry for a dead directory. */
+	//printk("debug 1\n");
         if (unlikely(IS_DEADDIR(inode)))
                 return ERR_PTR(-ENOENT);
 
+	//printk("debug 2\n");
         dentry = d_alloc(NULL, name);
         if (unlikely(!dentry))
                 return ERR_PTR(-ENOMEM);
 
+	//printk("debug 3\n");
         old = inode->i_op->lookup(inode, dentry, (struct nameidata *)ino);
         if (unlikely(old)) {
                 dput(dentry);
                 dentry = old;
         }
+	//printk("ino=%lu\n", dentry->d_inode->i_ino);
         return dentry;
 }
 
@@ -1350,6 +1357,7 @@ fail:
 
 static int do_lookuptag(struct nameidata *nd, struct qstr *name, unsigned long ino, struct path *path)
 {
+	printk("@do_lookuptag\n");
         struct vfsmount *mnt = nd->path.mnt;
         struct dentry *dentry, *parent = nd->path.dentry;
         //struct inode *dir;
@@ -2700,9 +2708,31 @@ out_filp:
 	filp = ERR_PTR(error);
 	goto out;
 }
+#include <linux/mnt_namespace.h>
+static struct vfsmount *find_vfsmount(struct dentry *root) {
+	//struct dentry *root = dget(dentry->d_sb->s_root);
+	dget(root);
+	struct mnt_namespace *nd = current->nsproxy->mnt_ns;
+	struct list_head *head = &nd->list;
+	struct list_head *pos;
+	struct vfsmount *mnt = NULL;
+
+	//down_read(&namespace->sem);
+	list_for_each(pos, head) {
+		mnt = list_entry(pos, struct vfsmount, mnt_list);
+		if (mnt->mnt_root == root)
+			break;
+	}
+	//up_read(&namespace->sem);
+	dput(root);
+	if (mnt == NULL)
+		printk("@find_vfsmount: mnt == NULL\n");
+	return mnt;
+}
 
 static int open_namei(unsigned long ino, unsigned int flags, struct nameidata *nd)
 {
+	printk("@open_namei\n");
         int retval;
 
         //
@@ -2730,6 +2760,19 @@ static int open_namei(unsigned long ino, unsigned int flags, struct nameidata *n
         nd->root.mnt = NULL;
         nd->file = NULL;
 
+	struct file_system_type *file_system = get_fs_type("tagfs");
+	struct list_head *list = file_system->fs_supers.next;
+	struct super_block *super_block = list_entry(list, struct super_block, s_instances);
+	printk("super_block device=%s\n", super_block->s_id);
+	printk("root=%s\n", super_block->s_root->d_iname);
+	put_filesystem(file_system);
+
+	if (super_block->s_root != NULL) {
+		printk("start find\n");
+		find_vfsmount(super_block->s_root);
+		printk("end find\n");
+	}
+
         struct fs_struct *fs = current->fs;
         unsigned seq;
 
@@ -2738,7 +2781,13 @@ static int open_namei(unsigned long ino, unsigned int flags, struct nameidata *n
 
         do {
                 seq = read_seqcount_begin(&fs->seq);
-                nd->root = fs->root;
+
+                nd->root = fs->root;  // uses this line of code if you would like kernel to crash (dmesg could work)
+
+		// uses the following two lines of code if you would like kernel to hang (dmesg could not work)
+		//nd->root.mnt = find_vfsmount(super_block->s_root);
+		//nd->root.dentry = super_block->s_root;
+
                 nd->path = nd->root;
                 nd->seq = __read_seqcount_begin(&nd->path.dentry->d_seq);
         } while (read_seqcount_retry(&fs->seq, seq));
@@ -2755,6 +2804,7 @@ static int open_namei(unsigned long ino, unsigned int flags, struct nameidata *n
         memset(name, '\0', NAME_LEN);
         name[0] = '/';
         snprintf(name + 1, NAME_LEN - 1, "%lu", ino);
+	printk("name=%s\n", name);
 
         struct path next;
         struct qstr this;
@@ -2773,7 +2823,7 @@ static int open_namei(unsigned long ino, unsigned int flags, struct nameidata *n
         } while (c && (c != '/'));
         this.len = ptr - (const char *) this.name;
         this.hash = end_name_hash(hash);
-
+	//printk("name=%c%c%c, len=%d\n", this.name[0], this.name[1], this.name[2], this.len);
         retval = do_lookuptag(nd, &this, ino, &next);
 
 /*
@@ -2822,6 +2872,7 @@ static int open_namei(unsigned long ino, unsigned int flags, struct nameidata *n
 
 struct file *do_filp_opentag(unsigned long ino, int open_flag, int acc_mode)
 {
+	printk("@do_filp_opentag\n");
         struct file *filp;
         struct nameidata nd;
         int error;

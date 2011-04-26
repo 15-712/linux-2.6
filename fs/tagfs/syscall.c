@@ -61,6 +61,7 @@ void uninstall_syscalls(void) {
 
 static long do_sys_opentag(const char __user *tagexp, int flags)
 {
+	printk("do_sys_opentag\n");
         char *tmp = getname(tagexp);
         int fd = PTR_ERR(tmp);
 	struct expr_tree *e;
@@ -105,6 +106,7 @@ int opentag(const char __user *tagexp, int flags) {
         long ret;
 
 	printk("opentag system call\n");
+	printk("@opentag\n");
         //if (force_o_largefile())
                 //flags |= O_LARGEFILE;
 
