@@ -281,10 +281,12 @@ cleanup:
 /* Evaluate the expression stored in the tree and return a table_element with the corresponding inodes */
 struct table_element* parse_tree(struct expr_tree *tree, struct hash_table *table) {
 	struct table_element* result;
+	struct table_element* elements;
+	int i;
 	if(tree->type == TAG) {
 		printk("Tree of type tag\n");
 		printk("Returning inodes for %s\n", tree->tag);
-		return get_inodes(table, tree->tag);
+		return copy_element(get_inodes(table, tree->tag));
 	} else if(tree->type == OPERATOR) {
 		printk("Tree of type operator\n");
 		struct table_element *a =  parse_tree(tree->left, table);

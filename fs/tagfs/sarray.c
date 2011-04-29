@@ -45,6 +45,20 @@ void delete_element(struct table_element *e) {
   }
 }
 
+struct table_element *copy_element(struct table_element *input) {
+	struct table_element* copy;
+	int i;
+	if(!input)
+		return NULL;
+	copy = new_element();
+	if(!copy)
+		return NULL;
+	for(i = 0; i < input->count; i++) {
+		insert_entry(copy, input->entries[i]);
+	}
+	return copy;
+}
+
 /** @brief inserts to the end of the array
  *
  *  Is a helper function for the union and intersect operations, which do

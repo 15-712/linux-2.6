@@ -533,6 +533,8 @@ int lstag(const char __user *expr, void __user *buf, unsigned long size, int off
 		if(copy_to_user(&((struct inode_entry *)buf)[i-offset], inodes[i], sizeof(struct inode_entry)))
 			goto end;
 	}
+
+	printk("Cleaning up results\n");
 	delete_element(results);
 	error = max(i-offset, 0);
 end:
@@ -558,7 +560,9 @@ int distag(const char __user *filename, char __user *buf, unsigned long size) {
 		goto fail_file;
 	}
 	
+	printk("filename: '%s'\n", file);
 	ino = ino_by_name(file);
+	printk("ino: %d\n", ino);
 	tag_ids = get_tagids(ino, &num_tags);
 	printk("num_tags: %d\n", num_tags);
 	offset = 0;
