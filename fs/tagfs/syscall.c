@@ -19,6 +19,12 @@ struct hash_table *table;
 
 static char inv[] = {'.', '&', '|', '/'};
 
+struct userspace_inode_entry {
+	unsigned long ino;
+	char filename[MAX_FILENAME_LEN+1];
+	unsigned int count;
+};
+
 int (*prev_opentag)(const char __user *, int);
 int (*prev_addtag)(const char __user *, const char __user *);
 int (*prev_rmtag)(const char __user *, const char __user *);
@@ -530,7 +536,8 @@ int lstag(const char __user *expr, void __user *buf, unsigned long size, int off
 	error = -EFAULT;
 	inodes = set_to_array(results);
 	for(i = offset; i < offset+size && i < len; i++) {
-		if(copy_to_user(&((struct inode_entry *)buf)[i-offset], inodes[i], sizeof(struct inode_entry)))
+		// Note: We are copying from the kernel struct into the user struct, but these structs are NOT the same size! 
+		if(copy_to_user(&(((struct userspace_inode_entry *)buf)[i-offset]), inodes[i], sizeof(struct userspace_inode_entry)))
 			goto end;
 	}
 
