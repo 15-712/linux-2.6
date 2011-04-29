@@ -568,7 +568,7 @@ int distag(const char __user *filename, char __user *buf, unsigned long size) {
 	}
 	
 	printk("filename: '%s'\n", file);
-	ino = ino_by_name(file);
+	ino = ino_by_name(filename);
 	printk("ino: %d\n", ino);
 	tag_ids = get_tagids(ino, &num_tags);
 	printk("num_tags: %d\n", num_tags);
