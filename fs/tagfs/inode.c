@@ -1292,6 +1292,8 @@ void ext2_get_inode_flags(struct ext2_inode_info *ei)
 
 struct inode *ext2_iget (struct super_block *sb, unsigned long ino)
 {
+	if (ino == EXT2_ROOT_INO)
+		printk(KERN_ALERT "@ext2_iget: EXT2_ROOT_INO\n");
 	struct ext2_inode_info *ei;
 	struct buffer_head * bh;
 	struct ext2_inode *raw_inode;
@@ -1364,6 +1366,8 @@ struct inode *ext2_iget (struct super_block *sb, unsigned long ino)
 		ei->i_data[n] = raw_inode->i_block[n];
 
 	if (S_ISREG(inode->i_mode)) {
+		if (ino == EXT2_ROOT_INO)
+			printk(KERN_ALERT "regular\n");
 		inode->i_op = &ext2_file_inode_operations;
 		if (ext2_use_xip(inode->i_sb)) {
 			inode->i_mapping->a_ops = &ext2_aops_xip;
@@ -1376,13 +1380,19 @@ struct inode *ext2_iget (struct super_block *sb, unsigned long ino)
 			inode->i_fop = &ext2_file_operations;
 		}
 	} else if (S_ISDIR(inode->i_mode)) {
+		if (ino == EXT2_ROOT_INO)
+			printk(KERN_ALERT "dir\n");
 		inode->i_op = &ext2_dir_inode_operations;
+		if (ino == EXT2_ROOT_INO)
+			printk("i_op=%p\n", inode->i_op);
 		inode->i_fop = &ext2_dir_operations;
 		if (test_opt(inode->i_sb, NOBH))
 			inode->i_mapping->a_ops = &ext2_nobh_aops;
 		else
 			inode->i_mapping->a_ops = &ext2_aops;
 	} else if (S_ISLNK(inode->i_mode)) {
+		if (ino == EXT2_ROOT_INO)
+			printk(KERN_ALERT "link\n");
 		if (ext2_inode_is_fast_symlink(inode)) {
 			inode->i_op = &ext2_fast_symlink_inode_operations;
 			nd_terminate_link(ei->i_data, inode->i_size,
@@ -1395,6 +1405,8 @@ struct inode *ext2_iget (struct super_block *sb, unsigned long ino)
 				inode->i_mapping->a_ops = &ext2_aops;
 		}
 	} else {
+		if (ino == EXT2_ROOT_INO)
+			printk("else\n");
 		inode->i_op = &ext2_special_inode_operations;
 		if (raw_inode->i_block[0])
 			init_special_inode(inode, inode->i_mode,

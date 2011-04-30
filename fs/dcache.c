@@ -1410,6 +1410,10 @@ static void __d_instantiate(struct dentry *dentry, struct inode *inode)
  
 void d_instantiate(struct dentry *entry, struct inode * inode)
 {
+/*
+	if ((inode->i_ino == 12) && (strncmp(entry->d_iname, "/12", 3) == 0))
+		return;
+*/
 	BUG_ON(!list_empty(&entry->d_alias));
 	if (inode)
 		spin_lock(&inode->i_lock);
@@ -1630,8 +1634,15 @@ struct dentry *d_splice_alias(struct inode *inode, struct dentry *dentry)
 			security_d_instantiate(dentry, inode);
 			d_rehash(dentry);
 		}
-	} else
+	} else {
+		/*if ((inode->i_ino == 12) && (strncmp(dentry->d_iname, "/12", 3) == 0)) {
+			//printk(KERN_ALERT "before d_add()\n");
+			return NULL;
+		}*/
+		/*if (strncpy(dentry->d_iname, "/12", 3) == 0)
+			printk(KERN_ALERT "ino=%lu\n", inode->i_ino);*/
 		d_add(dentry, inode);
+	}
 	return new;
 }
 EXPORT_SYMBOL(d_splice_alias);
@@ -1875,8 +1886,81 @@ EXPORT_SYMBOL(d_lookup);
  */
 struct dentry *__d_lookup(struct dentry *parent, struct qstr *name)
 {
+	unsigned int len = name->len;
+	unsigned int hash = name->hash;
+	const unsigned char *str = name->name;
+	struct dcache_hash_bucket *b = d_hash(parent, hash);
+	struct hlist_bl_node *node;
+	struct dentry *found = NULL;
+	struct dentry *dentry;
+
+	/*
+	 * Note: There is significant duplication with __d_lookup_rcu which is
+	 * required to prevent single threaded performance regressions
+	 * especially on architectures where smp_rmb (in seqcounts) are costly.
+	 * Keep the two functions in sync.
+	 */
+
+	/*
+	 * The hash list is protected using RCU.
+	 *
+	 * Take d_lock when comparing a candidate dentry, to avoid races
+	 * with d_move().
+	 *
+	 * It is possible that concurrent renames can mess up our list
+	 * walk here and result in missing our dentry, resulting in the
+	 * false-negative result. d_lookup() protects against concurrent
+	 * renames using rename_lock seqlock.
+	 *
+	 * See Documentation/vfs/dcache-locking.txt for more details.
+	 */
+	rcu_read_lock();
+	
+	hlist_bl_for_each_entry_rcu(dentry, node, &b->head, d_hash) {
+		const char *tname;
+		int tlen;
+
+		if (dentry->d_name.hash != hash)
+			continue;
+
+		spin_lock(&dentry->d_lock);
+		if (dentry->d_parent != parent)
+			goto next;
+		if (d_unhashed(dentry))
+			goto next;
+
+		/*
+		 * It is safe to compare names since d_move() cannot
+		 * change the qstr (protected by d_lock).
+		 */
+		tlen = dentry->d_name.len;
+		tname = dentry->d_name.name;
+		if (parent->d_flags & DCACHE_OP_COMPARE) {
+			if (parent->d_op->d_compare(parent, parent->d_inode,
+						dentry, dentry->d_inode,
+						tlen, tname, name))
+				goto next;
+		} else {
+			if (dentry_cmp(tname, tlen, str, len))
+				goto next;
+		}
+
+		dentry->d_count++;
+		found = dentry;
+		spin_unlock(&dentry->d_lock);
+		break;
+next:
+		spin_unlock(&dentry->d_lock);
+ 	}
+ 	rcu_read_unlock();
+
+ 	return found;
+}
+
+struct dentry *__d_lookuptag(struct dentry *parent, struct qstr *name)
+{
 	if (parent == NULL)
-		printk("@__d_lookup\n");
+		printk(KERN_ALERT "@__d_lookuptag\n");
 	unsigned int len = name->len;
 	unsigned int hash = name->hash;
 	const unsigned char *str = name->name;
@@ -2081,6 +2165,10 @@ static void _d_rehash(struct dentry * entry)
  
 void d_rehash(struct dentry * entry)
 {
+/*
+	if ((entry->d_name.len == 3) && (strncmp(entry->d_iname, "/12", 3) == 0))
+		return;
+*/
 	spin_lock(&entry->d_lock);
 	_d_rehash(entry);
 	spin_unlock(&entry->d_lock);

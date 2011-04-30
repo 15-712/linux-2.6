@@ -1211,30 +1211,57 @@ static struct dentry *d_alloc_and_lookup(struct dentry *parent,
 static struct dentry *d_alloc_and_lookuptag(struct dentry *parent, struct qstr *name, unsigned long ino)
 {
 	printk("@d_alloc_and_lookuptag\n");
-        struct inode *inode;
-        struct dentry *dentry;
-        struct dentry *old;
+	printk("ino=%lu\n", ino);
+        struct inode *inode = NULL;
+        struct dentry *dentry = NULL;
+        struct dentry *old = NULL;
+
+        struct file_system_type *file_system = get_fs_type("tagfs");
+        struct list_head *list = file_system->fs_supers.next;
+        struct super_block *super_block = list_entry(list, struct super_block, s_instances);
+        put_filesystem(file_system);
+
+        if (super_block->s_root != NULL) {
+		inode = super_block->s_root->d_inode;
+        }
+
+	printk(KERN_ALERT "inode=%p\n", inode);
+	printk(KERN_ALERT "parent->ino=%lu\n", inode->i_ino);
+
+        //inode = parent->d_inode;
 	
-	//if (parent == NULL)
-		//printk("parent == NULL\n");
-        inode = parent->d_inode;
 
         /* Don't create child dentry for a dead directory. */
-	//printk("debug 1\n");
+
+	printk("debug 1\n");
         if (unlikely(IS_DEADDIR(inode)))
                 return ERR_PTR(-ENOENT);
 
-	//printk("debug 2\n");
+	printk("debug 2\n");
         dentry = d_alloc(NULL, name);
         if (unlikely(!dentry))
                 return ERR_PTR(-ENOMEM);
 
-	//printk("debug 3\n");
-        old = inode->i_op->lookup(inode, dentry, (struct nameidata *)ino);
-        if (unlikely(old)) {
-                dput(dentry);
-                dentry = old;
-        }
+	printk("debug 3\n");
+	printk(KERN_ALERT "inode->i_op=%p\n", inode->i_op);
+	printk(KERN_ALERT "inode->i_op->lookup=%p\n", inode->i_op->lookup);
+        
+	//old = inode->i_op->lookup(inode, dentry, (struct nameidata *)ino);
+
+	if (inode->i_op->lookup != NULL) {
+		//printk(KERN_ALERT "inode->i_op->lookup=%p\n", inode->i_op->lookup);
+
+        	old = inode->i_op->lookup(inode, dentry, (struct nameidata *)ino);
+
+        	if (unlikely(old)) {
+                	dput(dentry);
+                	dentry = old;
+        	}
+
+	}
+
+
+
 	//printk("ino=%lu\n", dentry->d_inode->i_ino);
         return dentry;
 }
@@ -1357,7 +1384,7 @@ fail:
 
 static int do_lookuptag(struct nameidata *nd, struct qstr *name, unsigned long ino, struct path *path)
 {
-	printk("@do_lookuptag\n");
+	printk("@do_lookuptag: ino=%lu\n", ino);
         struct vfsmount *mnt = nd->path.mnt;
         struct dentry *dentry, *parent = nd->path.dentry;
         //struct inode *dir;
@@ -1414,7 +1441,7 @@ static int do_lookuptag(struct nameidata *nd, struct qstr *name, unsigned long i
                 // fallthru
         }
 */
-        dentry = __d_lookup(NULL, name);
+        dentry = __d_lookuptag(NULL, name);
         if (!dentry)
                 goto need_lookuptag;
 foundtag:
@@ -1441,6 +1468,7 @@ donetag:
         return 0;
 
 need_lookuptag:
+	printk(KERN_ALERT "need_lookuptag!\n");
         //dir = parent->d_inode;
         //BUG_ON(nd->inode != dir);
 
@@ -1456,6 +1484,7 @@ need_lookuptag:
         // be hot in cache, so would it be a big win?
         //
         //dentry = d_lookup(parent, name);
+
         if (likely(!dentry)) {
                 dentry = d_alloc_and_lookuptag(parent, name, ino);
                 //mutex_unlock(&dir->i_mutex);
@@ -1463,6 +1492,7 @@ need_lookuptag:
                         goto failtag;
                 goto donetag;
         }
+
         //
         // Uhhuh! Nasty case: the cache was re-populated while
         // we waited on the semaphore. Need to revalidate.
@@ -2732,8 +2762,8 @@ static struct vfsmount *find_vfsmount(struct dentry *root) {
 
 static int open_namei(unsigned long ino, unsigned int flags, struct nameidata *nd)
 {
-	printk("@open_namei\n");
-        int retval;
+	printk(KERN_ALERT "@open_namei: ino=%lu\n", ino);
+        int retval = 0;
 
         //
         // Path walking is largely split up into 2 different synchronisation
@@ -2763,15 +2793,17 @@ static int open_namei(unsigned long ino, unsigned int flags, struct nameidata *n
 	struct file_system_type *file_system = get_fs_type("tagfs");
 	struct list_head *list = file_system->fs_supers.next;
 	struct super_block *super_block = list_entry(list, struct super_block, s_instances);
-	printk("super_block device=%s\n", super_block->s_id);
-	printk("root=%s\n", super_block->s_root->d_iname);
+	printk(KERN_EMERG "super_block device=%s\n", super_block->s_id);
+	printk(KERN_EMERG "root=%s\n", super_block->s_root->d_iname);
 	put_filesystem(file_system);
 
 	if (super_block->s_root != NULL) {
-		printk("start find\n");
+		printk(KERN_EMERG "start find\n");
 		find_vfsmount(super_block->s_root);
-		printk("end find\n");
+		printk(KERN_EMERG "end find\n");
 	}
+
+	//while(1) ;
 
         struct fs_struct *fs = current->fs;
         unsigned seq;
@@ -2782,14 +2814,14 @@ static int open_namei(unsigned long ino, unsigned int flags, struct nameidata *n
         do {
                 seq = read_seqcount_begin(&fs->seq);
 
-                nd->root = fs->root;  // uses this line of code if you would like kernel to crash (dmesg could work)
+                //nd->root = fs->root;  // uses this line of code if you would like kernel to crash (dmesg could work)
 
 		// uses the following two lines of code if you would like kernel to hang (dmesg could not work)
-		//nd->root.mnt = find_vfsmount(super_block->s_root);
-		//nd->root.dentry = super_block->s_root;
+		nd->root.mnt = find_vfsmount(super_block->s_root);
+		nd->root.dentry = super_block->s_root;
 
                 nd->path = nd->root;
-                nd->seq = __read_seqcount_begin(&nd->path.dentry->d_seq);
+                //nd->seq = __read_seqcount_begin(&nd->path.dentry->d_seq);
         } while (read_seqcount_retry(&fs->seq, seq));
 
         nd->inode = nd->path.dentry->d_inode;
@@ -2804,7 +2836,7 @@ static int open_namei(unsigned long ino, unsigned int flags, struct nameidata *n
         memset(name, '\0', NAME_LEN);
         name[0] = '/';
         snprintf(name + 1, NAME_LEN - 1, "%lu", ino);
-	printk("name=%s\n", name);
+	printk(KERN_EMERG "name=%s\n", name);
 
         struct path next;
         struct qstr this;
@@ -2830,6 +2862,7 @@ static int open_namei(unsigned long ino, unsigned int flags, struct nameidata *n
         path_finish_rcu(nd);
 */
         if (nd->flags & LOOKUP_RCU) {
+		printk(KERN_EMERG "in the lookup_rcu\n");
                 nd->flags &= ~LOOKUP_RCU;
                 nd->root.mnt = NULL;
                 rcu_read_unlock();
@@ -2872,7 +2905,7 @@ static int open_namei(unsigned long ino, unsigned int flags, struct nameidata *n
 
 struct file *do_filp_opentag(unsigned long ino, int open_flag, int acc_mode)
 {
-	printk("@do_filp_opentag\n");
+	printk("@do_filp_opentag: ino=%lu\n", ino);
         struct file *filp;
         struct nameidata nd;
         int error;
@@ -2952,6 +2985,7 @@ struct file *do_filp_opentag(unsigned long ino, int open_flag, int acc_mode)
         }
 */
         //audit_inode(pathname, nd.path.dentry);
+
         filp = finish_open(&nd, open_flag, acc_mode);
         release_open_intent(&nd);
         return filp;
