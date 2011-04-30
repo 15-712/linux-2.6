@@ -67,7 +67,7 @@ void uninstall_syscalls(void) {
 
 static long do_sys_opentag(const char __user *tagexp, int flags)
 {
-	printk("do_sys_opentag\n");
+	printk("@do_sys_opentag\n");
         char *tmp = getname(tagexp);
         int fd = PTR_ERR(tmp);
 	struct expr_tree *e;
@@ -89,6 +89,7 @@ static long do_sys_opentag(const char __user *tagexp, int flags)
                 return -EMFILE;  // too many open files
 
         ino = set_to_array(t)[0]->ino;
+	printk(KERN_ALERT "ino=%lu\n", ino);
 
         if ((!IS_ERR(tmp)) || (ino > 0)) {
                 fd = get_unused_fd_flags(flags);

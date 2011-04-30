@@ -307,6 +307,7 @@ extern struct dentry *d_ancestor(struct dentry *, struct dentry *);
 extern struct dentry *d_lookup(struct dentry *, struct qstr *);
 extern struct dentry *d_hash_and_lookup(struct dentry *, struct qstr *);
 extern struct dentry *__d_lookup(struct dentry *, struct qstr *);
+extern struct dentry *__d_lookuptag(struct dentry *, struct qstr *);
 extern struct dentry *__d_lookup_rcu(struct dentry *parent, struct qstr *name,
 				unsigned *seq, struct inode **inode);
 
