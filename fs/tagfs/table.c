@@ -211,8 +211,10 @@ int table_remove(struct hash_table *table, const char *tag, unsigned long inode_
 	struct tag_node *node;
 	node = find_node(table, tag);
 	if(node) {
+		printk("Removing inode %u from %s\n", inode_num, tag);
 		remove_entry(node->e, inode_num);
 		if(element_size(node->e) == 0) {
+			printk("No more files with this tag, deleting tag from table\n");
 
 			/* decrement tag count */
 			table->num_tags--;

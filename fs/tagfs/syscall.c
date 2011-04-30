@@ -315,6 +315,7 @@ int rmtag(const char __user *filename, const char __user *tag) {
 	struct inode_entry **entries;
 	unsigned long ino = 0;
 	int i, ret = 0, num_tags = 0, conflict, len;
+	int t_id = 0;
 
 	printk("rmtag system call\n");
 
@@ -355,17 +356,21 @@ int rmtag(const char __user *filename, const char __user *tag) {
 	//TODO: tag_ids <- Get tag ids from block
 	tag_ids = get_tagids(ino, &num_tags);
 	if (num_tags > 1) {
+		
 		for(i = 0; i < num_tags; i++)
 			if (strcmp(get_tag(table, tag_ids[i]), t) == 0) {
-				int j;
-				for(j = i+1; j < num_tags; j++)
-					tag_ids[j-1] = tag_ids[j];
+				t_id = tag_ids[i];
 				break;
 			}
+			
 		curr = get_inodes(table, get_tag(table, tag_ids[0]));
-		for(i = 1; i < num_tags - 1; i++) {
-			struct table_element *prev = curr;
-			struct table_element *temp = get_inodes(table, get_tag(table, tag_ids[i]));
+		for(i = 1; i < num_tags; i++) {
+			struct table_element *prev;
+			struct table_element *temp;
+			if(tag_ids[i] == t_id) 
+				continue;
+			prev = curr;
+			temp = get_inodes(table, get_tag(table, tag_ids[i]));
 			curr = set_intersect(prev, temp);
 			if (i > 1)
 				delete_element(prev);
@@ -378,11 +383,13 @@ int rmtag(const char __user *filename, const char __user *tag) {
 		conflict = 0;
 		for(i = 0; i < element_size(curr); i++)
 			if (entries[i]->count == num_tags - 1 && strncmp(name, entries[i]->filename, MAX_FILENAME_LEN) == 0) {
+				printk("Removing tag introduces a conflict\n");
 				conflict = 1;
 				break;
 			}
 		if (num_tags > 2)
 			delete_element(curr);
+			
 		if (conflict) {
 			ret = -EINVAL;
 			goto clean_up;
