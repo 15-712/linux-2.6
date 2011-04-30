@@ -237,7 +237,7 @@ int table_insert(struct hash_table *table, const char *tag, struct inode_entry *
 	struct tag_node *node;
 	unsigned int tag_id;
 	int e;
-	printk("Adding tag %s to inode\n", tag);
+	//printk("Adding tag %s to inode\n", tag);
 	node = find_node(table, tag);
 	if(!node) {
 		/* Create empty table element */
@@ -267,7 +267,7 @@ int table_insert(struct hash_table *table, const char *tag, struct inode_entry *
 		node->tag_id = tag_id;
 	}
 
-	printk("Finished successfully\n");
+	//printk("Finished successfully\n");
 	return insert_entry(node->e, i);
 }
 
