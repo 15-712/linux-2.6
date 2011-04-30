@@ -1215,7 +1215,7 @@ static struct dentry *d_alloc_and_lookuptag(struct dentry *parent, struct qstr *
         struct inode *inode = NULL;
         struct dentry *dentry = NULL;
         struct dentry *old = NULL;
-
+/*
         struct file_system_type *file_system = get_fs_type("tagfs");
         struct list_head *list = file_system->fs_supers.next;
         struct super_block *super_block = list_entry(list, struct super_block, s_instances);
@@ -1224,12 +1224,12 @@ static struct dentry *d_alloc_and_lookuptag(struct dentry *parent, struct qstr *
         if (super_block->s_root != NULL) {
 		inode = super_block->s_root->d_inode;
         }
+*/
+        inode = parent->d_inode;
 
 	printk(KERN_ALERT "inode=%p\n", inode);
 	printk(KERN_ALERT "parent->ino=%lu\n", inode->i_ino);
 
-        //inode = parent->d_inode;
-	
 
         /* Don't create child dentry for a dead directory. */
 
@@ -1238,7 +1238,8 @@ static struct dentry *d_alloc_and_lookuptag(struct dentry *parent, struct qstr *
                 return ERR_PTR(-ENOENT);
 
 	printk("debug 2\n");
-        dentry = d_alloc(NULL, name);
+        dentry = d_alloc(parent, name);
+	printk("debug 2.5\n");
         if (unlikely(!dentry))
                 return ERR_PTR(-ENOMEM);
 
@@ -1441,7 +1442,8 @@ static int do_lookuptag(struct nameidata *nd, struct qstr *name, unsigned long i
                 // fallthru
         }
 */
-        dentry = __d_lookuptag(NULL, name);
+        //dentry = __d_lookuptag(NULL, name);
+        dentry = __d_lookuptag(parent, name);
         if (!dentry)
                 goto need_lookuptag;
 foundtag:

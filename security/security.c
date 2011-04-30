@@ -920,6 +920,21 @@ int security_sem_semop(struct sem_array *sma, struct sembuf *sops,
 
 void security_d_instantiate(struct dentry *dentry, struct inode *inode)
 {
+/*
+if ((inode && (inode->i_ino == 12)) && (dentry && (dentry->d_name.name[0] == '/'))) {
+	printk("@security_d_instantiate\n");
+	printk("inode->i_flags=%d\n", inode->i_flags);
+	//if (inode && IS_PRIVATE(inode))
+		//return;
+	//if (unlikely(inode && IS_PRIVATE(inode)))
+		//return;
+	printk("@after\n");
+	printk("security_ops=%p\n", security_ops);
+	if (security_ops != NULL)
+		printk("security_ops->d_instantiate=%p\n", security_ops->d_instantiate);
+	security_ops->d_instantiate(dentry, inode);
+}
+*/
 	if (unlikely(inode && IS_PRIVATE(inode)))
 		return;
 	security_ops->d_instantiate(dentry, inode);

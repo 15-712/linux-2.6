@@ -57,9 +57,10 @@ static inline int ext2_add_nondir(struct dentry *dentry, struct inode *inode)
 
 static struct dentry *ext2_lookup(struct inode * dir, struct dentry *dentry, struct nameidata *nd)
 {
+/*
 	if ((int)nd == 12)
 		printk(KERN_ALERT "ino == 12!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
-
+*/
 
 	printk("@ext2_lookup: fs/tagfs\n");
 	struct inode * inode;
@@ -89,12 +90,20 @@ static struct dentry *ext2_lookup(struct inode * dir, struct dentry *dentry, str
 			}
 		}
 	}
-
-	/*if ((int)nd == 12) {
+/*
+	if ((int)nd == 12) {
+		if (inode && S_ISDIR(inode->i_mode))
+			printk(KERN_ALERT "dir mode\n");
+		else
+			printk(KERN_ALERT "not dir mode\n");
 		//d_splice_alias(inode, dentry);
+		//d_add(dentry, inode);
+		d_instantiate(dentry, inode);
+		//d_rehash(dentry);
+		
 		return NULL;
-	}*/
-
+	}
+*/
 	//return NULL;
 	return d_splice_alias(inode, dentry);
 }

@@ -96,15 +96,18 @@ static long do_sys_opentag(const char __user *tagexp, int flags)
                 if (fd >= 0) {
                         struct file *f = do_filp_opentag(ino, flags, 0);
                         if (IS_ERR(f)) {
+				printk("fd error!!!\n");
                                 put_unused_fd(fd);
                                 fd = PTR_ERR(f);
                         } else {
+				printk("fd install!!!\n");
                                 fsnotify_open(f);
                                 fd_install(fd, f);
                         }
                 }
                 putname(tmp);
         }
+	printk("return from do_sys_open_tag: fd=%d\n", fd);
         return fd;
 }
 

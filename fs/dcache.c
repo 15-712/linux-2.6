@@ -1381,6 +1381,21 @@ EXPORT_SYMBOL(d_set_d_op);
 
 static void __d_instantiate(struct dentry *dentry, struct inode *inode)
 {
+/*
+if ((inode && (inode->i_ino == 12) && (dentry->d_name.name[0] == '/'))) {
+	printk("@__d_instantiate\n");
+	spin_lock(&dentry->d_lock);
+	if (inode) {
+		if (unlikely(IS_AUTOMOUNT(inode)))
+			dentry->d_flags |= DCACHE_NEED_AUTOMOUNT;
+		list_add(&dentry->d_alias, &inode->i_dentry);
+	}
+	dentry->d_inode = inode;
+	spin_unlock(&dentry->d_lock);
+	fsnotify_d_instantiate(dentry, inode);
+	return;
+}
+*/
 	spin_lock(&dentry->d_lock);
 	if (inode) {
 		if (unlikely(IS_AUTOMOUNT(inode)))
@@ -1411,8 +1426,17 @@ static void __d_instantiate(struct dentry *dentry, struct inode *inode)
 void d_instantiate(struct dentry *entry, struct inode * inode)
 {
 /*
-	if ((inode->i_ino == 12) && (strncmp(entry->d_iname, "/12", 3) == 0))
-		return;
+if ((inode && (inode->i_ino == 12)) && (entry && (entry->d_name.name[0] == '/'))) {
+	printk("@d_instantiate\n");
+	BUG_ON(!list_empty(&entry->d_alias));
+	if (inode)
+		spin_lock(&inode->i_lock);
+	__d_instantiate(entry, inode);
+	if (inode)
+		spin_unlock(&inode->i_lock);
+	security_d_instantiate(entry, inode);
+	return;
+}
 */
 	BUG_ON(!list_empty(&entry->d_alias));
 	if (inode)
