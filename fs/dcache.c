@@ -1381,6 +1381,7 @@ EXPORT_SYMBOL(d_set_d_op);
 
 static void __d_instantiate(struct dentry *dentry, struct inode *inode)
 {
+<<<<<<< HEAD
 /*
 if ((inode && (inode->i_ino == 12) && (dentry->d_name.name[0] == '/'))) {
 	printk("@__d_instantiate\n");
@@ -1425,6 +1426,7 @@ if ((inode && (inode->i_ino == 12) && (dentry->d_name.name[0] == '/'))) {
  
 void d_instantiate(struct dentry *entry, struct inode * inode)
 {
+<<<<<<< HEAD
 /*
 if ((inode && (inode->i_ino == 12)) && (entry && (entry->d_name.name[0] == '/'))) {
 	printk("@d_instantiate\n");

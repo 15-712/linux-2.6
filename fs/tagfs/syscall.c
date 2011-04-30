@@ -149,7 +149,7 @@ int addtag(const char __user *filename, const char __user *tag) {
 		goto fail_tag;
 	}
 	len = strlen(t);
-	printk("checking for invalid characters\n");
+	//printk("checking for invalid characters\n");
 	for (i = 0; i < len; i++) {
 		int j;
 		for (j = 0; j < sizeof(inv) / sizeof(char); j++) {
@@ -162,7 +162,7 @@ int addtag(const char __user *filename, const char __user *tag) {
 	}
 	len = strlen(file);
 	i = len - 1;
-	printk("making sure file is not a directory\n");
+	//printk("making sure file is not a directory\n");
 	while(i >= 0) {
 		if (file[i] == '/')
 			break;
@@ -185,17 +185,17 @@ int addtag(const char __user *filename, const char __user *tag) {
 	curr = get_inodes(table, t);
 	//Easy case
 	if (!curr) {
-		printk("creating new tag\n");
+		//printk("creating new tag\n");
 		/* TODO: Insert new tag into inode 
 		 *       if first tag, need to allocate block
 		 *       if block allocation fails, return failure condition
 		 */
 		if (num_tags) {
-			printk("looking up inode_entry\n");
+			//printk("looking up inode_entry\n");
 			struct table_element *e = get_inodes(table, get_tag(table, tag_ids[0]));
 			ent = find_entry(e, ino);
 		} else {
-			printk("creating inode_entry\n");
+			//printk("creating inode_entry\n");
 			ent = kmalloc(sizeof(struct inode_entry), GFP_KERNEL);
 			if (!ent) {
 				//TODO: Clean up
@@ -206,7 +206,7 @@ int addtag(const char __user *filename, const char __user *tag) {
 			strncpy(ent->filename, name, MAX_FILENAME_LEN);
 			ent->count = 0;
 		}
-		printk("Inserting tag into table\n");
+		//printk("Inserting tag into table\n");
 		ret = table_insert(table, t, ent);
 		if (ret) {
 			/*TODO: Clean up, may not be memory error, need 
@@ -220,7 +220,7 @@ int addtag(const char __user *filename, const char __user *tag) {
 			ret = -ENOMEM;
 			goto fail;
 		}
-		printk("Adding tag id\n");
+		//printk("Adding tag id\n");
 		add_tagid(ino, get_tagid(table, t));
 		putname(t);
 		putname(file);
@@ -302,7 +302,7 @@ int addtag(const char __user *filename, const char __user *tag) {
 	putname(file);
 	return 0;
 
-	printk("Finished addtag\n");
+	//printk("Finished addtag\n");
 fail:
 	//TODO: clean up
 	putname(t);
@@ -319,6 +319,7 @@ int rmtag(const char __user *filename, const char __user *tag) {
 	struct inode_entry **entries;
 	unsigned long ino = 0;
 	int i, ret = 0, num_tags = 0, conflict, len;
+	int t_id = 0;
 
 	printk("rmtag system call\n");
 
@@ -359,17 +360,21 @@ int rmtag(const char __user *filename, const char __user *tag) {
 	//TODO: tag_ids <- Get tag ids from block
 	tag_ids = get_tagids(ino, &num_tags);
 	if (num_tags > 1) {
+		
 		for(i = 0; i < num_tags; i++)
 			if (strcmp(get_tag(table, tag_ids[i]), t) == 0) {
-				int j;
-				for(j = i+1; j < num_tags; j++)
-					tag_ids[j-1] = tag_ids[j];
+				t_id = tag_ids[i];
 				break;
 			}
+			
 		curr = get_inodes(table, get_tag(table, tag_ids[0]));
-		for(i = 1; i < num_tags - 1; i++) {
-			struct table_element *prev = curr;
-			struct table_element *temp = get_inodes(table, get_tag(table, tag_ids[i]));
+		for(i = 1; i < num_tags; i++) {
+			struct table_element *prev;
+			struct table_element *temp;
+			if(tag_ids[i] == t_id) 
+				continue;
+			prev = curr;
+			temp = get_inodes(table, get_tag(table, tag_ids[i]));
 			curr = set_intersect(prev, temp);
 			if (i > 1)
 				delete_element(prev);
@@ -382,11 +387,13 @@ int rmtag(const char __user *filename, const char __user *tag) {
 		conflict = 0;
 		for(i = 0; i < element_size(curr); i++)
 			if (entries[i]->count == num_tags - 1 && strncmp(name, entries[i]->filename, MAX_FILENAME_LEN) == 0) {
+				printk("Removing tag introduces a conflict\n");
 				conflict = 1;
 				break;
 			}
 		if (num_tags > 2)
 			delete_element(curr);
+			
 		if (conflict) {
 			ret = -EINVAL;
 			goto clean_up;
@@ -497,10 +504,10 @@ int lstag(const char __user *expr, void __user *buf, unsigned long size, int off
 	/* If expr starts with a '.' then prepend cwt to expr */
 	len = strlen(kexpr);
 	if(len == 0) {
-		printk("full_expr = cwt\n");
+		//printk("full_expr = cwt\n");
 		full_expr = cwt;
 	} else if(kexpr[0] == '.') {
-		printk("full_expr = cwt & input\n");
+		//printk("full_expr = cwt & input\n");
 		len += strlen(cwt);
 		full_expr = kmalloc(sizeof(char) * len, GFP_KERNEL);
 		if(!full_expr)
@@ -508,23 +515,23 @@ int lstag(const char __user *expr, void __user *buf, unsigned long size, int off
 		len = strlcpy(full_expr, cwt, MAX_TAGEX_LEN);
 		strlcpy(&full_expr[len], &expr[1], MAX_TAGEX_LEN-len);
 	} else {
-		printk("full_expr = input\n");
+		//printk("full_expr = input\n");
 		full_expr = kmalloc(sizeof(char) * len, GFP_KERNEL);
 		if(!full_expr)
 			goto end;
 		strlcpy(full_expr, expr, MAX_TAGEX_LEN);
 	}
 
-	printk("full_expr = '%s'\n", full_expr);
+	//printk("full_expr = '%s'\n", full_expr);
 	/* Build tree */
 	error = -EINVAL;
 	tree = build_tree(full_expr);
-	printk("Tree has been built.\n");
+	//printk("Tree has been built.\n");
 	if(!tree)
 		goto end;
 		
 	results = parse_tree(tree, table);
-	printk("Tree has been parsed.\n");
+	//printk("Tree has been parsed.\n");
 
 	if(!results) {
 		printk("Found no results\n");
@@ -545,7 +552,7 @@ int lstag(const char __user *expr, void __user *buf, unsigned long size, int off
 			goto end;
 	}
 
-	printk("Cleaning up results\n");
+	//printk("Cleaning up results\n");
 	delete_element(results);
 	error = max(i-offset, 0);
 end:
@@ -584,9 +591,10 @@ int distag(const char __user *filename, char __user *buf, unsigned long size) {
 		if(offset + len + 1 > MAX_TAG_LEN*7)
 			break;
 		strncpy(&tag_list[offset], tag, MAX_TAG_LEN);
-		offset += len+1;
+		offset += len+2;
 		if(i != num_tags - 1)
-			tag_list[offset-1] = ',';
+			tag_list[offset-2] = ',';
+			tag_list[offset-1] = ' ';
 	}
 	
 	if(copy_to_user(buf, tag_list, size))

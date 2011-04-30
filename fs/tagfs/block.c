@@ -61,6 +61,7 @@ void remove_tagid(unsigned long ino, int tag) {
 					for(j = i; j < curr->num_tags - 1; j++)
 						curr->tag[j] = curr->tag[j+1];
 					curr->num_tags--;
+					break;
 				}
 			}
 		}

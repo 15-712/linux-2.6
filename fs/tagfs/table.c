@@ -211,8 +211,10 @@ int table_remove(struct hash_table *table, const char *tag, unsigned long inode_
 	struct tag_node *node;
 	node = find_node(table, tag);
 	if(node) {
+		printk("Removing inode %u from %s\n", inode_num, tag);
 		remove_entry(node->e, inode_num);
 		if(element_size(node->e) == 0) {
+			printk("No more files with this tag, deleting tag from table\n");
 
 			/* decrement tag count */
 			table->num_tags--;
@@ -235,7 +237,7 @@ int table_insert(struct hash_table *table, const char *tag, struct inode_entry *
 	struct tag_node *node;
 	unsigned int tag_id;
 	int e;
-	printk("Adding tag %s to inode\n", tag);
+	//printk("Adding tag %s to inode\n", tag);
 	node = find_node(table, tag);
 	if(!node) {
 		/* Create empty table element */
@@ -265,7 +267,7 @@ int table_insert(struct hash_table *table, const char *tag, struct inode_entry *
 		node->tag_id = tag_id;
 	}
 
-	printk("Finished successfully\n");
+	//printk("Finished successfully\n");
 	return insert_entry(node->e, i);
 }
 
