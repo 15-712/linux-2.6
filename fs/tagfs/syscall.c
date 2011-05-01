@@ -67,7 +67,7 @@ void uninstall_syscalls(void) {
 
 static long do_sys_opentag(const char __user *tagexp, int flags)
 {
-	printk("@do_sys_opentag\n");
+	//printk("@do_sys_opentag\n");
         char *tmp = getname(tagexp);
         int fd = PTR_ERR(tmp);
 	struct expr_tree *e;
@@ -89,25 +89,25 @@ static long do_sys_opentag(const char __user *tagexp, int flags)
                 return -EMFILE;  // too many open files
 
         ino = set_to_array(t)[0]->ino;
-	printk(KERN_ALERT "ino=%lu\n", ino);
+	//printk(KERN_ALERT "ino=%lu\n", ino);
 
         if ((!IS_ERR(tmp)) || (ino > 0)) {
                 fd = get_unused_fd_flags(flags);
                 if (fd >= 0) {
                         struct file *f = do_filp_opentag(ino, flags, 0);
                         if (IS_ERR(f)) {
-				printk("fd error!!!\n");
+				//printk("fd error!!!\n");
                                 put_unused_fd(fd);
                                 fd = PTR_ERR(f);
                         } else {
-				printk("fd install!!!\n");
+				//printk("fd install!!!\n");
                                 fsnotify_open(f);
                                 fd_install(fd, f);
                         }
                 }
                 putname(tmp);
         }
-	printk("return from do_sys_open_tag: fd=%d\n", fd);
+	//printk("return from do_sys_open_tag: fd=%d\n", fd);
         return fd;
 }
 
@@ -115,8 +115,8 @@ static long do_sys_opentag(const char __user *tagexp, int flags)
 int opentag(const char __user *tagexp, int flags) {
         long ret;
 
-	printk("opentag system call\n");
-	printk("@opentag\n");
+	//printk("opentag system call\n");
+	//printk("@opentag\n");
         //if (force_o_largefile())
                 //flags |= O_LARGEFILE;
 
@@ -137,7 +137,7 @@ int addtag(const char __user *filename, const char __user *tag) {
 	unsigned long ino = 0;
 	int i, ret = 0, num_tags = 0, conflict, min, len;
 
-	printk("addtag system call\n");
+	//printk("addtag system call\n");
 	file = getname(filename);
 	if (IS_ERR(file)) {
 		ret = PTR_ERR(file);
@@ -321,7 +321,7 @@ int rmtag(const char __user *filename, const char __user *tag) {
 	int i, ret = 0, num_tags = 0, conflict, len;
 	int t_id = 0;
 
-	printk("rmtag system call\n");
+	//printk("rmtag system call\n");
 
 	file = getname(filename);
 	if (IS_ERR(file)) {
@@ -330,7 +330,7 @@ int rmtag(const char __user *filename, const char __user *tag) {
 	}
 	len = strlen(file);
 	i = len - 1;
-	printk("making sure file is not a directory\n");
+	//printk("making sure file is not a directory\n");
 	while(i >= 0) {
 		if (file[i] == '/')
 			break;
@@ -416,7 +416,7 @@ int chtag(const char __user *tagex) {
 	char *ktagex = getname(tagex);
 	struct expr_tree *new_tree;
 	int len, ret = 0;
-	printk("chtag system call\n");
+	//printk("chtag system call\n");
 	if (IS_ERR(ktagex)) {
 		ret = PTR_ERR(ktagex);
 		goto end;
@@ -453,7 +453,7 @@ end:
 int mvtag(const char __user *tag1, const char __user *tag2) {
 	char *kt1, *kt2;
 	int ret;
-	printk("mvtag system call\n");
+	//printk("mvtag system call\n");
 	kt1= getname(tag1);
 	if (IS_ERR(kt1))
 		return -ENOMEM;
@@ -472,7 +472,7 @@ int getcwt(char __user *buf, unsigned long size) {
 	/* Why does getcwd (fs/dcache.c:2767) seem so complicated? */
 	int error;
 	unsigned long len;
-	printk("getcwt system call\n");
+	//printk("getcwt system call\n");
 	error = -ERANGE;
 	len = strlen(cwt);
 	if (len <= size) {
@@ -494,7 +494,7 @@ int lstag(const char __user *expr, void __user *buf, unsigned long size, int off
 	unsigned int len;
 	int error;
 	
-	printk("lstag system call\n");
+	//printk("lstag system call\n");
 	error = -ENOMEM;
 	if (IS_ERR(kexpr)) {
 		error = PTR_ERR(kexpr);
@@ -534,12 +534,12 @@ int lstag(const char __user *expr, void __user *buf, unsigned long size, int off
 	//printk("Tree has been parsed.\n");
 
 	if(!results) {
-		printk("Found no results\n");
+		//printk("Found no results\n");
 		error = -ENOENT;
 		goto end;
 	}
 	len = element_size(results);
-	printk("Found %d results\n", len);
+	//printk("Found %d results\n", len);
 	if(len == 0)
 		goto end;
 
@@ -570,7 +570,7 @@ int distag(const char __user *filename, char __user *buf, unsigned long size) {
 	int ret = 0;
 	int i, ino, len, num_tags, offset;
 	int *tag_ids = NULL;
-	printk("distag system call\n");
+	//printk("distag system call\n");
 
 	file = getname(filename);
 	if (IS_ERR(file)) {
@@ -578,15 +578,15 @@ int distag(const char __user *filename, char __user *buf, unsigned long size) {
 		goto fail_file;
 	}
 	
-	printk("filename: '%s'\n", file);
+	//printk("filename: '%s'\n", file);
 	ino = ino_by_name(filename);
-	printk("ino: %d\n", ino);
+	//printk("ino: %d\n", ino);
 	tag_ids = get_tagids(ino, &num_tags);
-	printk("num_tags: %d\n", num_tags);
+	//printk("num_tags: %d\n", num_tags);
 	offset = 0;
 	for(i = 0; i < num_tags; i++) {
 		tag = get_tag(table, tag_ids[i]);
-		printk("tag: %s\n", tag);
+		//printk("tag: %s\n", tag);
 		len = strlen(tag);
 		if(offset + len + 1 > MAX_TAG_LEN*7)
 			break;

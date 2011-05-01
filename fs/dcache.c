@@ -1381,7 +1381,6 @@ EXPORT_SYMBOL(d_set_d_op);
 
 static void __d_instantiate(struct dentry *dentry, struct inode *inode)
 {
-<<<<<<< HEAD
 /*
 if ((inode && (inode->i_ino == 12) && (dentry->d_name.name[0] == '/'))) {
 	printk("@__d_instantiate\n");
@@ -1426,7 +1425,6 @@ if ((inode && (inode->i_ino == 12) && (dentry->d_name.name[0] == '/'))) {
  
 void d_instantiate(struct dentry *entry, struct inode * inode)
 {
-<<<<<<< HEAD
 /*
 if ((inode && (inode->i_ino == 12)) && (entry && (entry->d_name.name[0] == '/'))) {
 	printk("@d_instantiate\n");
@@ -1985,8 +1983,6 @@ next:
 
 struct dentry *__d_lookuptag(struct dentry *parent, struct qstr *name)
 {
-	if (parent == NULL)
-		printk(KERN_ALERT "@__d_lookuptag\n");
 	unsigned int len = name->len;
 	unsigned int hash = name->hash;
 	const unsigned char *str = name->name;

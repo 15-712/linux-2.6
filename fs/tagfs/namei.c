@@ -62,7 +62,7 @@ static struct dentry *ext2_lookup(struct inode * dir, struct dentry *dentry, str
 		printk(KERN_ALERT "ino == 12!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
 */
 
-	printk("@ext2_lookup: fs/tagfs\n");
+	//printk("@ext2_lookup: fs/tagfs\n");
 	struct inode * inode;
 	ino_t ino;
 	
@@ -70,7 +70,7 @@ static struct dentry *ext2_lookup(struct inode * dir, struct dentry *dentry, str
 		return ERR_PTR(-ENAMETOOLONG);
 
         if (dentry->d_name.name[0] == '/') {  // hacking!!!
-		printk("len=%u, name=%c%c%c\n", dentry->d_name.len, dentry->d_name.name[0], dentry->d_name.name[1], dentry->d_name.name[2]);
+		//printk("len=%u, name=%c%c%c\n", dentry->d_name.len, dentry->d_name.name[0], dentry->d_name.name[1], dentry->d_name.name[2]);
                 ino = (ino_t) nd;
         } else {
                 ino = ext2_inode_by_name(dir, &dentry->d_name);
