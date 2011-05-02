@@ -12,6 +12,7 @@
 #include <linux/types.h>
 
 extern struct vfsmount *tagfs_vfsmount;
+extern struct dentry *tagfs_root;
 //void init_tagfs(struct vfsmount *vfsmount);
 
 /*
