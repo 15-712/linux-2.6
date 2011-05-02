@@ -32,7 +32,7 @@ int (*prev_chtag)(const char __user *);
 int (*prev_mvtag)(const char __user *, const char __user *);
 int (*prev_getcwt)(char __user *, unsigned long size);
 int (*prev_lstag)(const char __user *, void __user *, unsigned long, int);
-int (*prev_distag)(const char __user *, char __user *, unsigned long); 
+int (*prev_distag)(unsigned long, char __user *, unsigned long, unsigned long); 
 
 void install_syscalls(void) {
 	printk("Installing tag syscalls\n");
@@ -280,6 +280,7 @@ int addtag(const char __user *filename, const char __user *tag) {
 	conflict = 0;
 	for(i = 0; i < element_size(curr); i++) {
 		if (entries[i]->count == num_tags + 1 && strncmp(name, entries[i]->filename, MAX_FILENAME_LEN) == 0) {
+			printk("Conflict with file '%s', tag '%s'\n", name, t);
 			conflict = 1;
 			break;
 		}
@@ -588,32 +589,27 @@ end2:
 	return error;
 }
 
-int distag(const char __user *filename, char __user *buf, unsigned long size) {
-	char *file;
+int distag(unsigned long ino, char __user *buf, unsigned long size, unsigned long tag_offset) {
 	char tag_list[MAX_TAG_LEN*7];
 	const char *tag;
 	int ret = 0;
-	int i, ino, len, num_tags, offset;
+	int i, len, num_tags, offset;
 	int *tag_ids = NULL;
-	//printk("distag system call\n");
+	printk("distag system call\n");
 
-	file = getname(filename);
-	if (IS_ERR(file)) {
-		ret = PTR_ERR(file);
+	printk("ino: %lu\n", ino);
+	tag_ids = get_tagids(ino, &num_tags);
+	if(!tag_ids) {
+		ret = -ENOENT;
 		goto fail_file;
 	}
-	
-	//printk("filename: '%s'\n", file);
-	ino = ino_by_name(filename);
-	//printk("ino: %d\n", ino);
-	tag_ids = get_tagids(ino, &num_tags);
-	//printk("num_tags: %d\n", num_tags);
+	printk("num_tags: %d tag_offset: %lu\n", num_tags, tag_offset);
 	offset = 0;
-	for(i = 0; i < num_tags; i++) {
+	for(i = tag_offset; i < num_tags; i++) {
 		tag = get_tag(table, tag_ids[i]);
-		//printk("tag: %s\n", tag);
+		printk("tag: %s\n", tag);
 		len = strlen(tag);
-		if(offset + len + 1 > MAX_TAG_LEN*7)
+		if(offset + len + 2 > MAX_TAG_LEN*7 || offset + len + 2 > size)
 			break;
 		strncpy(&tag_list[offset], tag, MAX_TAG_LEN);
 		offset += len+2;
@@ -624,7 +620,6 @@ int distag(const char __user *filename, char __user *buf, unsigned long size) {
 	
 	if(copy_to_user(buf, tag_list, size))
 		ret = -EFAULT;
-	putname(file);	
 fail_file:
 	return ret;
 }
