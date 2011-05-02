@@ -174,6 +174,7 @@ void put_super(struct super_block *sb)
  */
 void deactivate_locked_super(struct super_block *s)
 {
+	//printk("@deactivate_locked_super\n");
 	struct file_system_type *fs = s->s_type;
 	if (atomic_dec_and_test(&s->s_active)) {
 		fs->kill_sb(s);
@@ -201,6 +202,7 @@ EXPORT_SYMBOL(deactivate_locked_super);
  */
 void deactivate_super(struct super_block *s)
 {
+	//printk("@deactivate_super\n");
         if (!atomic_add_unless(&s->s_active, -1, 1)) {
 		down_write(&s->s_umount);
 		deactivate_locked_super(s);
@@ -270,6 +272,7 @@ EXPORT_SYMBOL(unlock_super);
  */
 void generic_shutdown_super(struct super_block *sb)
 {
+	//printk("@generic_shutdown_super\n");
 	const struct super_operations *sop = sb->s_op;
 
 
@@ -862,6 +865,7 @@ EXPORT_SYMBOL(get_sb_bdev);
 
 void kill_block_super(struct super_block *sb)
 {
+	//printk("@kill_block_super\n");
 	struct block_device *bdev = sb->s_bdev;
 	fmode_t mode = sb->s_mode;
 
