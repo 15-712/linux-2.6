@@ -11,6 +11,9 @@
 #include <linux/blk_types.h>
 #include <linux/types.h>
 
+extern struct vfsmount *tagfs_vfsmount;
+//void init_tagfs(struct vfsmount *vfsmount);
+
 /*
  * It's silly to have NR_OPEN bigger than NR_FILE, but you can change
  * the file limit at runtime and only root can increase the per-process
@@ -2575,6 +2578,5 @@ unsigned long ino_by_name(const char __user *pathname);
 #define ACC_MODE(x) ("\004\002\006\006"[(x)&O_ACCMODE])
 #define OPEN_FMODE(flag) ((__force fmode_t)(((flag + 1) & O_ACCMODE) | \
 					    (flag & __FMODE_NONOTIFY)))
-
 #endif /* __KERNEL__ */
 #endif /* _LINUX_FS_H */

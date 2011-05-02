@@ -38,6 +38,8 @@
 #include "xip.h"
 #include "syscall.h"
 
+//extern struct vfsmount *tagfs_vfsmount;
+
 static void ext2_sync_super(struct super_block *sb,
 			    struct ext2_super_block *es, int wait);
 static int ext2_remount (struct super_block * sb, int * flags, char * data);
@@ -197,7 +199,7 @@ static void init_once(void *foo)
 
 static int init_inodecache(void)
 {
-	ext2_inode_cachep = kmem_cache_create("ext2_inode_cache",
+	ext2_inode_cachep = kmem_cache_create("tagfs_inode_cache",
 					     sizeof(struct ext2_inode_info),
 					     0, (SLAB_RECLAIM_ACCOUNT|
 						SLAB_MEM_SPREAD),
@@ -1373,10 +1375,37 @@ static int ext2_statfs (struct dentry * dentry, struct kstatfs * buf)
 	return 0;
 }
 
+#include <linux/mnt_namespace.h>
+#include <linux/nsproxy.h>
+static struct vfsmount *find_vfsmount(struct dentry *root) {
+        dget(root);
+        struct mnt_namespace *nd = current->nsproxy->mnt_ns;
+        struct list_head *head = &nd->list;
+        struct list_head *pos;
+        struct vfsmount *mnt = NULL;
+
+        //down_read(&namespace->sem);
+        list_for_each(pos, head) {
+                mnt = list_entry(pos, struct vfsmount, mnt_list);
+                if (mnt->mnt_root == root)
+                        break;
+        }
+        //up_read(&namespace->sem);
+        dput(root);
+        if (mnt == NULL)
+                printk("@find_vfsmount: mnt == NULL\n");
+        return mnt;
+}
+
 static struct dentry *ext2_mount(struct file_system_type *fs_type,
 	int flags, const char *dev_name, void *data)
 {
-	return mount_bdev(fs_type, flags, dev_name, data, ext2_fill_super);
+	printk("@ext2_mount\n");
+	
+	struct dentry *root = mount_bdev(fs_type, flags, dev_name, data, ext2_fill_super);
+	tagfs_vfsmount = find_vfsmount(root);
+	//init_tagfs(find_vfsmount(root));
+	return root;
 }
 
 #ifdef CONFIG_QUOTA

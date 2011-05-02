@@ -733,6 +733,9 @@ static struct vfsmount *clone_mnt(struct vfsmount *old, struct dentry *root,
 
 static inline void mntfree(struct vfsmount *mnt)
 {
+//if (mnt && mnt->mnt_sb && mnt->mnt_sb->s_type && strncmp(mnt->mnt_sb->s_type->name, "tagfs", 5) == 0) {
+	//printk("@mntfree\n");
+//}
 	struct super_block *sb = mnt->mnt_sb;
 
 	/*
@@ -742,6 +745,7 @@ static inline void mntfree(struct vfsmount *mnt)
 	 * to make r/w->r/o transitions.
 	 */
 	/*
+f (mnt && mnt->mnt_sb && mnt->mnt_sb->s_type && strncmp(mnt->mnt_sb->s_type->name, "tagfs", 5) == 0) {
 	 * The locking used to deal with mnt_count decrement provides barriers,
 	 * so mnt_get_writers() below is safe.
 	 */
@@ -754,10 +758,21 @@ static inline void mntfree(struct vfsmount *mnt)
 
 static void mntput_no_expire(struct vfsmount *mnt)
 {
+//if (mnt && mnt->mnt_sb && mnt->mnt_sb->s_type && strncmp(mnt->mnt_sb->s_type->name, "tagfs", 5) == 0) {
+//	printk("@mntput_no_expire\n");
+//}
 put_again:
 #ifdef CONFIG_SMP
+//if (mnt && mnt->mnt_sb && mnt->mnt_sb->s_type && strncmp(mnt->mnt_sb->s_type->name, "tagfs", 5) == 0) {
+//        printk("debug 1\n");
+//}
 	br_read_lock(vfsmount_lock);
 	if (likely(atomic_read(&mnt->mnt_longterm))) {
+//if (mnt && mnt->mnt_sb && mnt->mnt_sb->s_type && strncmp(mnt->mnt_sb->s_type->name, "tagfs", 5) == 0) {
+//        printk("debug 2\n");
+//	int ret = mnt_get_count(mnt);
+//	printk("num=%d\n", ret);
+//}
 		mnt_dec_count(mnt);
 		br_read_unlock(vfsmount_lock);
 		return;
@@ -766,29 +781,47 @@ put_again:
 
 	br_write_lock(vfsmount_lock);
 	mnt_dec_count(mnt);
+//	int num = mnt_get_count(mnt);
+//if (mnt && mnt->mnt_sb && mnt->mnt_sb->s_type && strncmp(mnt->mnt_sb->s_type->name, "tagfs", 5) == 0) {
+//	printk("num=%d\n", num);
+//}
+//	if (num) {
 	if (mnt_get_count(mnt)) {
+//if (mnt && mnt->mnt_sb && mnt->mnt_sb->s_type && strncmp(mnt->mnt_sb->s_type->name, "tagfs", 5) == 0) {
+//        printk("debug 3\n");
+//}
 		br_write_unlock(vfsmount_lock);
 		return;
 	}
 #else
 	mnt_dec_count(mnt);
-	if (likely(mnt_get_count(mnt)))
+	if (likely(mnt_get_count(mnt))) {
 		return;
+	}
 	br_write_lock(vfsmount_lock);
 #endif
 	if (unlikely(mnt->mnt_pinned)) {
+//if (mnt && mnt->mnt_sb && mnt->mnt_sb->s_type && strncmp(mnt->mnt_sb->s_type->name, "tagfs", 5) == 0) {
+//        printk("debug 6\n");
+//}
 		mnt_add_count(mnt, mnt->mnt_pinned + 1);
 		mnt->mnt_pinned = 0;
 		br_write_unlock(vfsmount_lock);
 		acct_auto_close_mnt(mnt);
 		goto put_again;
 	}
+//if (mnt && mnt->mnt_sb && mnt->mnt_sb->s_type && strncmp(mnt->mnt_sb->s_type->name, "tagfs", 5) == 0) {
+//        printk("almost return\n");
+//}
 	br_write_unlock(vfsmount_lock);
 	mntfree(mnt);
 }
 
 void mntput(struct vfsmount *mnt)
 {
+//if (mnt && mnt->mnt_sb && mnt->mnt_sb->s_type && strncmp(mnt->mnt_sb->s_type->name, "tagfs", 5) == 0) {
+//	printk("@mntput, num=%d\n", mnt_get_count(mnt));
+//}
 	if (mnt) {
 		/* avoid cacheline pingpong, hope gcc doesn't get "smart" */
 		if (unlikely(mnt->mnt_expiry_mark))
@@ -800,6 +833,9 @@ EXPORT_SYMBOL(mntput);
 
 struct vfsmount *mntget(struct vfsmount *mnt)
 {
+//if (mnt && mnt->mnt_sb && mnt->mnt_sb->s_type && strncmp(mnt->mnt_sb->s_type->name, "tagfs", 5) == 0) {
+//	printk("@mntget, num=%d\n", mnt_get_count(mnt));
+//}
 	if (mnt)
 		mnt_inc_count(mnt);
 	return mnt;
@@ -1162,6 +1198,7 @@ EXPORT_SYMBOL(may_umount);
 
 void release_mounts(struct list_head *head)
 {
+	//printk("@release_mounts\n");
 	struct vfsmount *mnt;
 	while (!list_empty(head)) {
 		mnt = list_first_entry(head, struct vfsmount, mnt_hash);
@@ -1219,6 +1256,7 @@ static void shrink_submounts(struct vfsmount *mnt, struct list_head *umounts);
 
 static int do_umount(struct vfsmount *mnt, int flags)
 {
+	//printk("@do_umount\n");
 	struct super_block *sb = mnt->mnt_sb;
 	int retval;
 	LIST_HEAD(umount_list);
@@ -1226,7 +1264,6 @@ static int do_umount(struct vfsmount *mnt, int flags)
 	retval = security_sb_umount(mnt, flags);
 	if (retval)
 		return retval;
-
 	/*
 	 * Allow userspace to request a mountpoint be expired rather than
 	 * unmounting unconditionally. Unmount only happens if:
@@ -1282,8 +1319,9 @@ static int do_umount(struct vfsmount *mnt, int flags)
 		 * we just try to remount it readonly.
 		 */
 		down_write(&sb->s_umount);
-		if (!(sb->s_flags & MS_RDONLY))
+		if (!(sb->s_flags & MS_RDONLY)) {
 			retval = do_remount_sb(sb, MS_RDONLY, NULL, 0);
+		}
 		up_write(&sb->s_umount);
 		return retval;
 	}
@@ -1292,13 +1330,15 @@ static int do_umount(struct vfsmount *mnt, int flags)
 	br_write_lock(vfsmount_lock);
 	event++;
 
-	if (!(flags & MNT_DETACH))
+	if (!(flags & MNT_DETACH)) {
 		shrink_submounts(mnt, &umount_list);
+	}
 
 	retval = -EBUSY;
 	if (flags & MNT_DETACH || !propagate_mount_busy(mnt, 2)) {
-		if (!list_empty(&mnt->mnt_list))
+		if (!list_empty(&mnt->mnt_list)) {
 			umount_tree(mnt, 1, &umount_list);
+		}
 		retval = 0;
 	}
 	br_write_unlock(vfsmount_lock);
@@ -1317,10 +1357,10 @@ static int do_umount(struct vfsmount *mnt, int flags)
 
 SYSCALL_DEFINE2(umount, char __user *, name, int, flags)
 {
+	//printk("@sys_umount\n");
 	struct path path;
 	int retval;
 	int lookup_flags = 0;
-
 	if (flags & ~(MNT_FORCE | MNT_DETACH | MNT_EXPIRE | UMOUNT_NOFOLLOW))
 		return -EINVAL;
 
