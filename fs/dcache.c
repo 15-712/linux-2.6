@@ -889,6 +889,7 @@ EXPORT_SYMBOL(shrink_dcache_sb);
  */
 static void shrink_dcache_for_umount_subtree(struct dentry *dentry)
 {
+	//printk("@shrink_dcache_for_umount_subtree: d_count=%d\n", dentry->d_count);
 	struct dentry *parent;
 	unsigned detached = 0;
 
@@ -899,6 +900,9 @@ static void shrink_dcache_for_umount_subtree(struct dentry *dentry)
 	dentry_lru_del(dentry);
 	__d_drop(dentry);
 	spin_unlock(&dentry->d_lock);
+
+	//struct dentry *root = dentry;
+	//printk("debug 1: root d_count=%d, root d_iname=%s\n", root->d_count, root->d_iname);
 
 	for (;;) {
 		/* descend to the first leaf in the current subtree */
@@ -922,13 +926,16 @@ static void shrink_dcache_for_umount_subtree(struct dentry *dentry)
 			dentry = list_entry(dentry->d_subdirs.next,
 					    struct dentry, d_u.d_child);
 		}
+		//printk("debug2: d_count=%d, d_iname=%s\n", dentry->d_count, dentry->d_iname);
 
 		/* consume the dentries from this leaf up through its parents
 		 * until we find one with children or run out altogether */
 		do {
+			//printk("debug 2: root d_count=%d, d_iname=%s\n", root->d_count, dentry->d_iname);
 			struct inode *inode;
 
 			if (dentry->d_count != 0) {
+				//if (strncmp(dentry->d_sb->s_type->name, "tagfs", 5) != 0) {
 				printk(KERN_ERR
 				       "BUG: Dentry %p{i=%lx,n=%s}"
 				       " still in use (%d)"
@@ -941,38 +948,51 @@ static void shrink_dcache_for_umount_subtree(struct dentry *dentry)
 				       dentry->d_sb->s_type->name,
 				       dentry->d_sb->s_id);
 				BUG();
+				//} else {
+					//dentry->d_count = 0;
+				//}
 			}
 
 			if (IS_ROOT(dentry)) {
+				//printk("is root\n");
 				parent = NULL;
 				list_del(&dentry->d_u.d_child);
 			} else {
+				//printk("not root\n");
 				parent = dentry->d_parent;
 				spin_lock(&parent->d_lock);
 				parent->d_count--;
 				list_del(&dentry->d_u.d_child);
 				spin_unlock(&parent->d_lock);
 			}
+			//printk("debug 3: root d_count=%d, d_iname=%s\n", root->d_count, dentry->d_iname);
 
 			detached++;
 
 			inode = dentry->d_inode;
 			if (inode) {
+				//printk("nullify inode\n");
 				dentry->d_inode = NULL;
 				list_del_init(&dentry->d_alias);
-				if (dentry->d_op && dentry->d_op->d_iput)
+				if (dentry->d_op && dentry->d_op->d_iput) {
+					//printk("d_put()\n");
 					dentry->d_op->d_iput(dentry, inode);
-				else
+				} else {
+					//printk("iput()\n");
 					iput(inode);
+				}
 			}
 
 			d_free(dentry);
 
+			//printk("debug 4: root d_count=%d, d_iname=%s\n", root->d_count, dentry->d_iname);
 			/* finished when we fall off the top of the tree,
 			 * otherwise we ascend to the parent and move to the
 			 * next sibling if there is one */
-			if (!parent)
+			if (!parent) {
+				//printk("return\n");
 				return;
+			}
 			dentry = parent;
 		} while (list_empty(&dentry->d_subdirs));
 
@@ -993,6 +1013,7 @@ static void shrink_dcache_for_umount_subtree(struct dentry *dentry)
  */
 void shrink_dcache_for_umount(struct super_block *sb)
 {
+	//printk("@shrink_dcache_for_umount\n");
 	struct dentry *dentry;
 
 	if (down_read_trylock(&sb->s_umount))

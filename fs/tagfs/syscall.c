@@ -8,13 +8,15 @@
 #include <linux/buffer_head.h>
 #include <linux/file.h>
 #include <linux/fsnotify.h>
+#include <asm-generic/bug.h>
+#include <linux/module.h>
 
 #include "syscall.h"
 #include "table.h"
 #include "block.h"
 
 char cwt[MAX_TAGEX_LEN+1];
-struct expr_tree *tree = NULL;
+//struct expr_tree *tree = NULL;
 struct hash_table *table;
 
 static char inv[] = {'.', '&', '|', '/'};
@@ -77,6 +79,18 @@ static long do_sys_opentag(const char __user *tagexp, int flags)
 	int size, i;
 	int num_tags = 0;
 
+	//struct file_system_type *file_system = get_fs_type("tagfs");
+        //struct list_head *list = file_system->fs_supers.next;
+        //struct super_block *super_block = list_entry(list, struct super_block, s_instances);
+        //put_filesystem(file_system);
+	//module_put(file_system->owner);
+	//int before = super_block->s_root->d_count;
+	//printk("before=%d\n", before);
+	/*if (before != 0) {
+		printk("before=%d\n", before);
+		BUG();
+	}*/
+
         // checks flags
         if ((flags != O_RDONLY) && (flags != O_WRONLY) && (flags != O_RDWR))
                 return -EINVAL;
@@ -121,18 +135,24 @@ static long do_sys_opentag(const char __user *tagexp, int flags)
                 if (fd >= 0) {
                         struct file *f = do_filp_opentag(ino, flags, 0);
                         if (IS_ERR(f)) {
-				//printk("fd error!!!\n");
+				printk("fd error\n");
                                 put_unused_fd(fd);
                                 fd = PTR_ERR(f);
                         } else {
-				//printk("fd install!!!\n");
+				printk("fd install\n");
                                 fsnotify_open(f);
                                 fd_install(fd, f);
                         }
                 }
                 putname(tmp);
         }
-	//printk("return from do_sys_open_tag: fd=%d\n", fd);
+	printk("return from do_sys_open_tag: fd=%d\n", fd);
+	//int after = super_block->s_root->d_count;
+	//printk("after=%d\n", after);
+	//if (after != before) {
+		//super_block->s_root->d_count--;
+		//BUG();
+	//}
         return fd;
 }
 
@@ -169,8 +189,6 @@ int add_single_tag(unsigned long ino, const char *tag, char *name) {
 			}
 		}
 	}
-
-
 	tag_ids = get_tagids(ino, &num_tags);
 	//TODO: tag_ids <- Get tags from inode
 	curr = get_inodes(table, tag);
@@ -317,6 +335,10 @@ int addtag(const char __user *filename, const char __user **tag, unsigned int si
 	}
 
 	putname(file);
+
+
+        //after = super_block->s_root->d_count;
+	//printk("after2=%d\n", after);
 	return 0;
 
 	//printk("Finished addtag\n");
@@ -329,6 +351,8 @@ fail_tag:
 fail:
 	putname(file);
 fail_file:
+        //after = super_block->s_root->d_count;
+	//printk("after3=%d\n", after);
 	return ret;
 }
 
@@ -438,7 +462,7 @@ end:
 
 int chtag(const char __user *tagex) {
 	char *ktagex = getname(tagex);
-	struct expr_tree *new_tree;
+	//struct expr_tree *new_tree;
 	int len, ret = 0;
 	//printk("chtag system call\n");
 	if (IS_ERR(ktagex)) {
@@ -452,22 +476,22 @@ int chtag(const char __user *tagex) {
 	}
 	if (len == 0) {
 		cwt[0] = '\0';
-		free_tree(tree);
-		tree = NULL;
+		//free_tree(tree);
+		//tree = NULL;
 		goto clean_up;
 	}
 
-	if (!(new_tree = build_tree(tagex))) {
-		/* TODO: need some way to check if the expression
+	/*if (!(new_tree = build_tree(tagex))) {
+		TODO: need some way to check if the expression
 		 *       has an error or a memory error occurred
-		 */
+		
 		ret = -EINVAL;
 		goto clean_up;
-	}
+	}*/
 	strcpy(cwt, ktagex);
-	if (tree)
+	/*if (tree)
 		free_tree(tree);
-	tree = new_tree;
+	tree = new_tree;*/
 clean_up:
 	putname(ktagex);
 end:

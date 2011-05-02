@@ -38,6 +38,12 @@
 
 #include <linux/printk.h>
 
+struct vfsmount *tagfs_vfsmount;
+EXPORT_SYMBOL(tagfs_vfsmount);
+//void init_tagfs(struct vfsmount *vfsmount) {
+//	tagfs_vfsmount = vfsmount;
+//}
+
 /* [Feb-1997 T. Schoebel-Theuer]
  * Fundamental changes in the pathname lookup mechanisms (namei)
  * were necessary because of omirr.  The reason is that omirr needs
@@ -1210,7 +1216,7 @@ static struct dentry *d_alloc_and_lookup(struct dentry *parent,
 
 static struct dentry *d_alloc_and_lookuptag(struct dentry *parent, struct qstr *name, unsigned long ino)
 {
-	//printk("@d_alloc_and_lookuptag\n");
+	printk("@d_alloc_and_lookuptag\n");
 	//printk("ino=%lu\n", ino);
         struct inode *inode = NULL;
         struct dentry *dentry = NULL;
@@ -1225,6 +1231,7 @@ static struct dentry *d_alloc_and_lookuptag(struct dentry *parent, struct qstr *
 		inode = super_block->s_root->d_inode;
         }
 */
+	printk("fs=%s\n", parent->d_sb->s_type->name);
         inode = parent->d_inode;
 
 	//printk(KERN_ALERT "inode=%p\n", inode);
@@ -1238,7 +1245,21 @@ static struct dentry *d_alloc_and_lookuptag(struct dentry *parent, struct qstr *
                 return ERR_PTR(-ENOENT);
 
 	//printk("debug 2\n");
+        //struct file_system_type *file_system = get_fs_type("tagfs");
+        //struct list_head *list = file_system->fs_supers.next;
+        //struct super_block *super_block = list_entry(list, struct super_block, s_instances);
+        //put_filesystem(file_system);
+        //module_put(file_system->owner);
+        //int before = super_block->s_root->d_count;
+        //printk("before=%d\n", before);
+
         dentry = d_alloc(parent, name);
+	//dentry = d_alloc_pseudo(parent->d_sb, name);
+
+	//parent->d_count--;
+
+        //int after1 = super_block->s_root->d_count;
+        //printk("after1=%d\n", after1);
 	//printk("debug 2.5\n");
         if (unlikely(!dentry))
                 return ERR_PTR(-ENOMEM);
@@ -1249,17 +1270,20 @@ static struct dentry *d_alloc_and_lookuptag(struct dentry *parent, struct qstr *
         
 	//old = inode->i_op->lookup(inode, dentry, (struct nameidata *)ino);
 
-	if (inode->i_op->lookup != NULL) {
+	//if (inode->i_op->lookup != NULL) {
 		//printk(KERN_ALERT "inode->i_op->lookup=%p\n", inode->i_op->lookup);
 
         	old = inode->i_op->lookup(inode, dentry, (struct nameidata *)ino);
+        	//int after2 = super_block->s_root->d_count;
+        	//printk("after2=%d\n", after2);
 
         	if (unlikely(old)) {
+			printk("unlikely!!!!!!!\n");
                 	dput(dentry);
                 	dentry = old;
         	}
 
-	}
+	//}
 
 
 
@@ -1442,8 +1466,21 @@ static int do_lookuptag(struct nameidata *nd, struct qstr *name, unsigned long i
                 // fallthru
         }
 */
+        //struct file_system_type *file_system = get_fs_type("tagfs");
+        //struct list_head *list = file_system->fs_supers.next;
+        //struct super_block *super_block = list_entry(list, struct super_block, s_instances);
+        //put_filesystem(file_system);
+        //module_put(file_system->owner);
+        //int before = super_block->s_root->d_count;
+        //printk("before=%d\n", before);
+
         //dentry = __d_lookuptag(NULL, name);
         dentry = __d_lookuptag(parent, name);
+
+        //int after1 = super_block->s_root->d_count;
+	//int after2;
+        //printk("after1=%d\n", after1);
+	
         if (!dentry)
                 goto need_lookuptag;
 foundtag:
@@ -1489,6 +1526,10 @@ need_lookuptag:
 
         if (likely(!dentry)) {
                 dentry = d_alloc_and_lookuptag(parent, name, ino);
+
+        	//int after2 = super_block->s_root->d_count;
+        	//printk("after2=%d\n", after2);
+
                 //mutex_unlock(&dir->i_mutex);
                 if (IS_ERR(dentry))
                         goto failtag;
@@ -2740,6 +2781,7 @@ out_filp:
 	filp = ERR_PTR(error);
 	goto out;
 }
+
 #include <linux/mnt_namespace.h>
 static struct vfsmount *find_vfsmount(struct dentry *root) {
 	//struct dentry *root = dget(dentry->d_sb->s_root);
@@ -2800,19 +2842,19 @@ static int open_namei(unsigned long ino, unsigned int flags, struct nameidata *n
 	//printk(KERN_EMERG "root=%s\n", super_block->s_root->d_iname);
 	put_filesystem(file_system);
 
-	if (super_block->s_root != NULL) {
+	//if (super_block->s_root != NULL) {
 		//printk(KERN_EMERG "start find\n");
-		find_vfsmount(super_block->s_root);
+		//find_vfsmount(super_block->s_root);
 		//printk(KERN_EMERG "end find\n");
-	}
+	//}
 
 	//while(1) ;
 
         struct fs_struct *fs = current->fs;
         unsigned seq;
 
-        br_read_lock(vfsmount_lock);
-        rcu_read_lock();
+        //br_read_lock(vfsmount_lock);
+        //rcu_read_lock();
 
         do {
                 seq = read_seqcount_begin(&fs->seq);
@@ -2820,11 +2862,16 @@ static int open_namei(unsigned long ino, unsigned int flags, struct nameidata *n
                 //nd->root = fs->root;  // uses this line of code if you would like kernel to crash (dmesg could work)
 
 		// uses the following two lines of code if you would like kernel to hang (dmesg could not work)
-		nd->root.mnt = find_vfsmount(super_block->s_root);
-		nd->root.dentry = super_block->s_root;
-
-                nd->path = nd->root;
-                //nd->seq = __read_seqcount_begin(&nd->path.dentry->d_seq);
+		nd->root.mnt = /*find_vfsmount(super_block->s_root);*/tagfs_vfsmount;
+		mntget(nd->root.mnt);
+		nd->root.dentry = super_block->s_root; /*tagfs_vfsmount->mnt_root;*/
+		if (super_block->s_root != tagfs_vfsmount->mnt_root) {
+			printk("not equal!!!!!\n");
+			printk("d_iname=%s\n", super_block->s_root->d_iname);
+			printk("d_ianme=%s\n", tagfs_vfsmount->mnt_root->d_iname);
+		}
+		nd->path = nd->root;
+                nd->seq = __read_seqcount_begin(&nd->path.dentry->d_seq);
         } while (read_seqcount_retry(&fs->seq, seq));
 
         nd->inode = nd->path.dentry->d_inode;
@@ -2859,20 +2906,26 @@ static int open_namei(unsigned long ino, unsigned int flags, struct nameidata *n
         this.len = ptr - (const char *) this.name;
         this.hash = end_name_hash(hash);
 	//printk("name=%c%c%c, len=%d\n", this.name[0], this.name[1], this.name[2], this.len);
+
+        //int before = super_block->s_root->d_count;
+        //printk("before=%d\n", before);
+
         retval = do_lookuptag(nd, &this, ino, &next);
 
+        //int after = super_block->s_root->d_count;
+        //printk("after=%d\n", after);
 /*
         path_finish_rcu(nd);
 */
-        if (nd->flags & LOOKUP_RCU) {
+        //if (nd->flags & LOOKUP_RCU) {
 		//printk(KERN_EMERG "in the lookup_rcu\n");
                 nd->flags &= ~LOOKUP_RCU;
                 nd->root.mnt = NULL;
-                rcu_read_unlock();
-                br_read_unlock(vfsmount_lock);
-        }
-        if (nd->file)
-                fput(nd->file);
+                //rcu_read_unlock();
+                //br_read_unlock(vfsmount_lock);
+        //}
+        //if (nd->file)
+                //fput(nd->file);
 
         nd->path = next;
 
@@ -2916,8 +2969,16 @@ struct file *do_filp_opentag(unsigned long ino, int open_flag, int acc_mode)
         //int count = 0;
         int flag = open_to_namei_flags(open_flag);
         int flags;
-
         int mode;
+
+	//struct file_system_type *file_system = get_fs_type("tagfs");
+        //struct list_head *list = file_system->fs_supers.next;
+        //struct super_block *super_block = list_entry(list, struct super_block, s_instances);
+        //put_filesystem(file_system);
+        //module_put(file_system->owner);
+        //int before = super_block->s_root->d_count;
+        //printk("before=%d\n", before);
+
 
         if (!(open_flag & O_CREAT))
                 mode = 0;
@@ -2973,6 +3034,10 @@ struct file *do_filp_opentag(unsigned long ino, int open_flag, int acc_mode)
 */
         // !O_CREAT, simple open
         error = open_namei(ino, flags, &nd);
+
+        //int after1 = super_block->s_root->d_count;
+        //printk("after1=%d\n", after1);
+
 /*
         if (unlikely(error))
                 goto out_filp;
@@ -2990,7 +3055,12 @@ struct file *do_filp_opentag(unsigned long ino, int open_flag, int acc_mode)
         //audit_inode(pathname, nd.path.dentry);
 
         filp = finish_open(&nd, open_flag, acc_mode);
+        //int after2 = super_block->s_root->d_count;
+	//printk("after2=%d\n", after2);
         release_open_intent(&nd);
+        //int after3 = super_block->s_root->d_count;
+	//printk("after3=%d\n", after3);
+	
         return filp;
 /*
 creat:

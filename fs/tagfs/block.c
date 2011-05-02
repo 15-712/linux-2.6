@@ -69,6 +69,19 @@ void remove_tagid(unsigned long ino, int tag) {
 	}
 }
 
+void mv_block(unsigned long ino1, unsigned long ino2)
+{
+	struct block *curr = head;
+	while (curr) 
+	{
+		if (curr->ino == ino1) {
+			curr->ino = ino2;
+			return;
+		}
+
+	}
+}
+
 void deallocate_block(unsigned long ino) {
 	struct block *prev, *curr;
 	prev = NULL;

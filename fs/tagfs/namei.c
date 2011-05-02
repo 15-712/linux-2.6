@@ -36,6 +36,8 @@
 #include "xattr.h"
 #include "acl.h"
 #include "xip.h"
+#include "table.h"
+#include "block.h"
 
 static inline int ext2_add_nondir(struct dentry *dentry, struct inode *inode)
 {
@@ -62,7 +64,7 @@ static struct dentry *ext2_lookup(struct inode * dir, struct dentry *dentry, str
 		printk(KERN_ALERT "ino == 12!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
 */
 
-	//printk("@ext2_lookup: fs/tagfs\n");
+	printk("@ext2_lookup\n");
 	struct inode * inode;
 	ino_t ino;
 	
@@ -171,6 +173,12 @@ static int ext2_mknod (struct inode * dir, struct dentry *dentry, int mode, dev_
 		err = ext2_add_nondir(dentry, inode);
 	}
 	return err;
+}
+
+static int tagfs_symlink (struct inode * dir, struct dentry * dentry,
+	const char * symname)
+{
+	return -ENOSYS;
 }
 
 static int ext2_symlink (struct inode * dir, struct dentry * dentry,
@@ -318,6 +326,21 @@ out:
 	return err;
 }
 
+static int tagfs_unlink(struct inode *dir, struct dentry *dentry)
+{
+	struct inode *inode = dentry->d_inode;
+	int num_tags = 0;
+	int *tag_ids = get_tagids(inode->i_ino, &num_tags);
+	printk("num_tags = %d\n", num_tags);
+	if (num_tags > 0) {
+		int i;
+		for (i = 0; i < num_tags; i++)
+			table_remove(table, get_tag(table, tag_ids[i]), inode->i_ino);	
+		deallocate_block(inode->i_ino);
+	}
+	return ext2_unlink(dir, dentry);
+}
+
 static int ext2_rmdir (struct inode * dir, struct dentry *dentry)
 {
 	struct inode * inode = dentry->d_inode;
@@ -427,16 +450,35 @@ out:
 	return err;
 }
 
+static int tagfs_rename (struct inode * old_dir, struct dentry * old_dentry,
+	struct inode * new_dir,	struct dentry * new_dentry )
+{
+	int ret = 0, num_tags;
+	int *tag_ids;
+	unsigned long old_ino = old_dentry->d_inode->i_ino;
+	if (new_dentry->d_inode)
+		return -ENOSYS;
+	if ((ret = ext2_rename(old_dir, old_dentry, new_dir, new_dentry)))
+		return ret;
+	tag_ids = get_tagids(old_ino, &num_tags);
+	if (num_tags > 0) {
+		struct table_element *element = get_inodes(table, get_tag(table, tag_ids[0]));
+		struct inode_entry *entry = find_entry(element, old_ino);
+		strncpy(entry->filename, new_dentry->d_iname, MAX_FILENAME_LEN);
+	}
+	return 0;
+}
+
 const struct inode_operations ext2_dir_inode_operations = {
 	.create		= ext2_create,
 	.lookup		= ext2_lookup,
 	.link		= ext2_link,
-	.unlink		= ext2_unlink,
-	.symlink	= ext2_symlink,
+	.unlink		= tagfs_unlink,
+	.symlink	= tagfs_symlink,
 	.mkdir		= ext2_mkdir,
 	.rmdir		= ext2_rmdir,
 	.mknod		= ext2_mknod,
-	.rename		= ext2_rename,
+	.rename		= tagfs_rename,
 #ifdef CONFIG_EXT2_FS_XATTR
 	.setxattr	= generic_setxattr,
 	.getxattr	= generic_getxattr,
