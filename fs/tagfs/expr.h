@@ -15,6 +15,7 @@ enum node_type {
 
 struct expr_tree {
 	enum node_type type;
+	unsigned int num_ops;
 	union {
 		char tag[MAX_TAG_LEN];
 		struct {

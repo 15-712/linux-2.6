@@ -122,6 +122,7 @@ static struct expr_tree *perform_op(struct expr_tree *a, struct expr_tree *b, ch
 	op_node->type = OPERATOR;
 	op_node->right = a;
 	op_node->left = b;
+	op_node->num_ops = a->num_ops + b->num_ops + 1;
 	if(is_intersect_op(op))
 		op_node->op = INTERSECTION;
 	if(is_union_op(op))
@@ -145,6 +146,7 @@ static int build_branch(struct tree_stack *sTree, struct op_stack *sOp) {
 	b = tree_pop(sTree);
 	a = perform_op(a, b, op);
 	sTree = tree_push(sTree, a);	
+	//printk("Number of operators: %d\n", a->num_ops);
 	return 1;
 }
 
@@ -231,6 +233,7 @@ struct expr_tree *build_tree(const char* expr) {
 			if(!node)
 				goto cleanup;
 			node->type = TAG;
+			node->num_ops = 0;
 			node->tag[0] = '\0';
 			end = index;
 			while(	expr[end] != '\0' && 
@@ -281,8 +284,6 @@ cleanup:
 /* Evaluate the expression stored in the tree and return a table_element with the corresponding inodes */
 struct table_element* parse_tree(struct expr_tree *tree, struct hash_table *table) {
 	struct table_element* result;
-	struct table_element* elements;
-	int i;
 	if(tree->type == TAG) {
 		//printk("Tree of type tag\n");
 		//printk("Returning inodes for %s\n", tree->tag);

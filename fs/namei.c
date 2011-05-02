@@ -2749,6 +2749,7 @@ static struct vfsmount *find_vfsmount(struct dentry *root) {
 	struct list_head *pos;
 	struct vfsmount *mnt = NULL;
 
+	//printk("@find_vfsmount: %s %d\n", root->d_name.name, root->d_count);
 	//down_read(&namespace->sem);
 	list_for_each(pos, head) {
 		mnt = list_entry(pos, struct vfsmount, mnt_list);

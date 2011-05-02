@@ -72,7 +72,10 @@ static long do_sys_opentag(const char __user *tagexp, int flags)
         int fd = PTR_ERR(tmp);
 	struct expr_tree *e;
 	struct table_element *t;
+	struct inode_entry **inode_array;
 	unsigned long ino;
+	int size, i;
+	int num_tags = 0;
 
         // checks flags
         if ((flags != O_RDONLY) && (flags != O_WRONLY) && (flags != O_RDWR))
@@ -85,10 +88,32 @@ static long do_sys_opentag(const char __user *tagexp, int flags)
         t = parse_tree(e, table);
         if (t == NULL)
                 return -EINVAL;
-        if (element_size(t) != 1)
-                return -EMFILE;  // too many open files
+	size = element_size(t);
+	inode_array = set_to_array(t);
+	//printk("Found %d possible inodes.\n", size);
+	if (size == 1) {
+		// Use this inode regardless of if it is fully specified or not
+		ino = inode_array[0]->ino;
+	} else if (size > 1) { // We found more than 1 file
+		// See if one of the files is fully specified by the given tags
+		i = 0;
 
-        ino = set_to_array(t)[0]->ino;
+		do {
+			get_tagids(inode_array[i]->ino, &num_tags);
+			//printk("num_tags [%d] = %d\n", i, num_tags);
+			i++;
+		} while(i < size && num_tags != e->num_ops + 1);
+
+
+		if(i == size)
+			return -EMFILE; // We can't determine which file to open
+
+		ino = inode_array[i-1]->ino;
+		//printk("opening inode #%ld\n", ino);
+	} else {
+		return -EMFILE; // No files found
+	}
+
 	//printk(KERN_ALERT "ino=%lu\n", ino);
 
         if ((!IS_ERR(tmp)) || (ino > 0)) {
