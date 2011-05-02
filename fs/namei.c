@@ -1409,7 +1409,7 @@ fail:
 
 static int do_lookuptag(struct nameidata *nd, struct qstr *name, unsigned long ino, struct path *path)
 {
-	printk("@do_lookuptag: ino=%lu\n", ino);
+	//printk("@do_lookuptag: ino=%lu\n", ino);
         struct vfsmount *mnt = nd->path.mnt;
         struct dentry *dentry, *parent = nd->path.dentry;
         //struct inode *dir;
@@ -2791,6 +2791,7 @@ static struct vfsmount *find_vfsmount(struct dentry *root) {
 	struct list_head *pos;
 	struct vfsmount *mnt = NULL;
 
+	//printk("@find_vfsmount: %s %d\n", root->d_name.name, root->d_count);
 	//down_read(&namespace->sem);
 	list_for_each(pos, head) {
 		mnt = list_entry(pos, struct vfsmount, mnt_list);
@@ -2799,14 +2800,14 @@ static struct vfsmount *find_vfsmount(struct dentry *root) {
 	}
 	//up_read(&namespace->sem);
 	dput(root);
-	if (mnt == NULL)
-		printk("@find_vfsmount: mnt == NULL\n");
+	/*if (mnt == NULL)
+		printk("@find_vfsmount: mnt == NULL\n");*/
 	return mnt;
 }
 
 static int open_namei(unsigned long ino, unsigned int flags, struct nameidata *nd)
 {
-	printk(KERN_ALERT "@open_namei: ino=%lu\n", ino);
+	//printk(KERN_ALERT "@open_namei: ino=%lu\n", ino);
         int retval = 0;
 
         //
@@ -2885,7 +2886,7 @@ static int open_namei(unsigned long ino, unsigned int flags, struct nameidata *n
         memset(name, '\0', NAME_LEN);
         name[0] = '/';
         snprintf(name + 1, NAME_LEN - 1, "%lu", ino);
-	printk(KERN_EMERG "name=%s\n", name);
+	//printk(KERN_EMERG "name=%s\n", name);
 
         struct path next;
         struct qstr this;
@@ -2960,7 +2961,7 @@ static int open_namei(unsigned long ino, unsigned int flags, struct nameidata *n
 
 struct file *do_filp_opentag(unsigned long ino, int open_flag, int acc_mode)
 {
-	printk("@do_filp_opentag: ino=%lu\n", ino);
+	//printk("@do_filp_opentag: ino=%lu\n", ino);
         struct file *filp;
         struct nameidata nd;
         int error;

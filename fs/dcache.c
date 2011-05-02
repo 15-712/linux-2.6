@@ -2004,8 +2004,6 @@ next:
 
 struct dentry *__d_lookuptag(struct dentry *parent, struct qstr *name)
 {
-	if (parent == NULL)
-		printk(KERN_ALERT "@__d_lookuptag\n");
 	unsigned int len = name->len;
 	unsigned int hash = name->hash;
 	const unsigned char *str = name->name;

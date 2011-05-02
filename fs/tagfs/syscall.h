@@ -15,7 +15,7 @@ int chtag(const char __user *);
 int mvtag(const char __user *, const char __user *);
 int getcwt(char __user *, unsigned long);
 int lstag(const char __user *, void __user *, unsigned long, int);
-int distag(const char __user *, char __user *, unsigned long); 
+int distag(unsigned long, char __user *, unsigned long, unsigned long); 
 void install_syscalls(void);
 void uninstall_syscalls(void);
 #endif
