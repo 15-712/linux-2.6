@@ -231,11 +231,6 @@ int add_single_tag(unsigned long ino, const char *tag, char *name) {
 		return 0;
 	}
 
-	for (i = 0; i < num_tags; i++) {
-		if (strncmp(tag, get_tag(table, tag_ids[i]), MAX_TAG_LEN) == 0) {
-			printk("File already has tag %s.\n", tag);
-		}
-	}
 	check = get_inodes(table, get_tag(table, tag_ids[0]));
 	/* TODO: Insert new tag into inode 
 	 *       if first tag, need to allocate block
@@ -272,7 +267,7 @@ int addtag(const char __user *filename, const char __user **tag, unsigned int si
 	char *file, *t, *name;
 	int *tag_ids = NULL;
 	unsigned long ino = 0;
-	int i, j, ret = 0, num_tags = 0, len;
+	int i, j, ret = 0, num_tags = 0, len, duplicate = 0;
 
 	printk("addtag system call\n");
 	file = getname(filename);
@@ -297,6 +292,7 @@ int addtag(const char __user *filename, const char __user **tag, unsigned int si
 	name = file + i + 1;
 
 	ino = ino_by_name(filename);
+	printk("inode for addtag: %lu\n", ino);
 	if(ino < 0) {
 		printk("Invalid inode for addtag\n");
 		ret = ino;
@@ -312,20 +308,27 @@ int addtag(const char __user *filename, const char __user **tag, unsigned int si
 		goto fail;
 	}
 
-	
 	/* add tags */
 	for(i = 0; i < size; i++) {
+		duplicate = 0;
 		t = getname(tag[i]);
 		if (IS_ERR(t)) {
 			ret = PTR_ERR(t);
 			goto fail_tag;
 		}
 		for (j = 0; j < num_tags; j++) {
-			if (strncmp(t, get_tag(table, tag_ids[i]), MAX_TAG_LEN) == 0) {
+			if (strncmp(t, get_tag(table, tag_ids[j]), MAX_TAG_LEN) == 0) {
 				printk("File already has tag %s.\n", t);
+				duplicate = 1;
+				// Clear this tag so we don't clean it up on error
+				t[0] = '\0';
+				break;
 			}
 		}
-		ret = add_single_tag(ino, t, name);
+		if(duplicate == 0) {
+			ret = add_single_tag(ino, t, name);
+			tag_ids = get_tagids(ino, &num_tags);
+		}
 		putname(t);
 		if(ret) 
 			goto fail_tag;
@@ -340,9 +343,10 @@ int addtag(const char __user *filename, const char __user **tag, unsigned int si
 
 	//printk("Finished addtag\n");
 fail_tag:
+	printk("Failed to add tags\n");
 	/* undo added tags */
-	for(j = i-1; i >= 0; i++) {
-		rmtag(filename, &tag[i], 1);
+	for(j = i-1; j >= 0; j--) {
+		rmtag(filename, &tag[j], 1);
 	}
 
 fail:
@@ -502,7 +506,7 @@ int lstag(const char __user *expr, void __user *buf, unsigned long size, int off
 	unsigned int len;
 	int error;
 	
-	printk("lstag system call\n");
+	//printk("lstag system call\n");
 	error = -ENOMEM;
 	if (IS_ERR(kexpr)) {
 		error = PTR_ERR(kexpr);
@@ -530,7 +534,7 @@ int lstag(const char __user *expr, void __user *buf, unsigned long size, int off
 		strlcpy(full_expr, expr, MAX_TAGEX_LEN);
 	}
 
-	printk("full_expr = '%s'\n", full_expr);
+	//printk("full_expr = '%s'\n", full_expr);
 	/* Build tree */
 	error = -EINVAL;
 	tree = build_tree(full_expr);
@@ -547,9 +551,11 @@ int lstag(const char __user *expr, void __user *buf, unsigned long size, int off
 		goto end;
 	}
 	len = element_size(results);
-	printk("Found %d results\n", len);
-	if(len == 0)
+	//printk("Found %d results\n", len);
+	if(len == 0) {
+		error = -ENOENT;
 		goto end;
+	}
 
 	/* Copy to user space */
 	error = -EFAULT;
@@ -568,7 +574,7 @@ end:
 end2:
 	if(full_expr)
 		kfree(full_expr);
-	printk("lstag returning %d\n", error);
+	//printk("lstag returning %d\n", error);
 	return error;
 }
 
@@ -577,19 +583,20 @@ int distag(unsigned long ino, char __user **buf, unsigned long size, unsigned lo
 	int ret = 0;
 	int i, num_tags, offset;
 	int *tag_ids = NULL;
-	printk("distag system call\n");
+	//printk("distag system call\n");
 
-	printk("ino: %lu\n", ino);
+	printk("@distag ino: %lu\n", ino);
 	tag_ids = get_tagids(ino, &num_tags);
+	printk("@distag tag_ids: %p\n", tag_ids);
 	if(!tag_ids) {
 		ret = -ENOENT;
 		goto fail_file;
 	}
-	printk("num_tags: %d tag_offset: %lu\n", num_tags, tag_offset);
+	//printk("num_tags: %d tag_offset: %lu\n", num_tags, tag_offset);
 	offset = 0;
 	for(i = tag_offset; i < num_tags && i < size; i++) {
 		tag = get_tag(table, tag_ids[i]);
-		printk("tag: %s\n", tag);
+		//printk("tag: %s\n", tag);
 		if(copy_to_user(buf[i], tag, MAX_TAG_LEN))
 			ret = -EFAULT;
 	}

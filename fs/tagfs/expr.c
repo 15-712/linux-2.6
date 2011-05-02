@@ -293,21 +293,28 @@ struct table_element* parse_tree(struct expr_tree *tree, struct hash_table *tabl
 		struct table_element *a =  parse_tree(tree->left, table);
 		struct table_element *b =  parse_tree(tree->right, table);
 		printk("Acquired childern nodes\n");
-		if(!a) {
-			result = b;
-		} else if(!b) {
-			result = a;
-		} else {
-		
-			if(tree->op == INTERSECTION) {
+		if(tree->op == INTERSECTION) {
+			if(!a || !b) {
+				result = NULL;
+			} else {
 				result = set_intersect(a, b);
+				if(tree->left->type != TAG)
+					delete_element(a);	
+				if(tree->right->type != TAG)
+					delete_element(b);	
+			}
+		} else {
+			if(!a) {
+				result = b;
+			} else if(!b) {
+				result = a;
 			} else {
 				result = set_union(a, b);
+				if(tree->left->type != TAG)
+					delete_element(a);	
+				if(tree->right->type != TAG)
+					delete_element(b);	
 			}
-			if(tree->left->type != TAG)
-				delete_element(a);	
-			if(tree->right->type != TAG)
-				delete_element(b);	
 		}
 		return result;
 	}
