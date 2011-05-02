@@ -29,12 +29,12 @@ struct userspace_inode_entry {
 
 int (*prev_opentag)(const char __user *, int);
 int (*prev_addtag)(const char __user *, const char __user **, unsigned int);
-int (*prev_rmtag)(const char __user *, const char __user *);
+int (*prev_rmtag)(const char __user *, const char __user **, unsigned int);
 int (*prev_chtag)(const char __user *);
 int (*prev_mvtag)(const char __user *, const char __user *);
 int (*prev_getcwt)(char __user *, unsigned long size);
 int (*prev_lstag)(const char __user *, void __user *, unsigned long, int);
-int (*prev_distag)(unsigned long, char __user *, unsigned long, unsigned long); 
+int (*prev_distag)(unsigned long, char __user **, unsigned long, unsigned long); 
 
 void install_syscalls(void) {
 	printk("Installing tag syscalls\n");
@@ -281,7 +281,6 @@ int addtag(const char __user *filename, const char __user **tag, unsigned int si
 		goto fail_file;
 	}
 
-
 	len = strlen(file);
 	i = len - 1;
 	//printk("making sure file is not a directory\n");
@@ -327,11 +326,9 @@ int addtag(const char __user *filename, const char __user **tag, unsigned int si
 			}
 		}
 		ret = add_single_tag(ino, t, name);
-		if(ret) {
-			putname(t);
-			goto fail_tag;
-		}
 		putname(t);
+		if(ret) 
+			goto fail_tag;
 	}
 
 	putname(file);
@@ -345,7 +342,7 @@ int addtag(const char __user *filename, const char __user **tag, unsigned int si
 fail_tag:
 	/* undo added tags */
 	for(j = i-1; i >= 0; i++) {
-		rmtag(filename, tag[i]);
+		rmtag(filename, &tag[i], 1);
 	}
 
 fail:
@@ -356,20 +353,30 @@ fail_file:
 	return ret;
 }
 
-int rm_single_tag(unsigned long ino, const char *tag, int *tag_ids, char *name) {
-	/*curr = get_inodes(table, t);*/
+int rm_single_tag(unsigned long ino, const char *tag) {
+	struct table_element *curr;
+	int num_tags = 0;
+	int *tag_ids = NULL;
+
+	curr = get_inodes(table, tag);
+	//Easy case, tag doesn't exist;
+	if (!curr)
+		return 0;
+		
+	tag_ids = get_tagids(ino, &num_tags);
+	remove_tagid(ino, get_tagid(table, tag));
+	if (num_tags == 1)
+		deallocate_block(ino);
+	table_remove(table, tag, ino);
+	return 0;
 }
 
-int rmtag(const char __user *filename, const char __user *tag) {
-	char *file, *t, *name;
-	int *tag_ids = NULL;
-	struct table_element *curr;
-	struct inode_entry **entries;
+int rmtag(const char __user *filename, const char __user **tag, unsigned int size) {
+	char *file, *t;
 	unsigned long ino = 0;
-	int i, ret = 0, num_tags = 0, conflict, len;
-	int t_id = 0;
+	int i, ret = 0, len;
 
-	//printk("rmtag system call\n");
+	printk("rmtag system call\n");
 
 	file = getname(filename);
 	if (IS_ERR(file)) {
@@ -385,76 +392,29 @@ int rmtag(const char __user *filename, const char __user *tag) {
 		i--;
 	}
 	if (i == len - 1) {
-		printk("Cannot tag a directory.\n");
+		printk("Cannot rmtag a directory.\n");
 		ret = -EINVAL;
-		goto clean_file;
+		goto clean_up;
 	}
-	name = file + i + 1;
-	t = getname(tag);
-	if (IS_ERR(t)) {
-		ret = PTR_ERR(t);
-		goto clean_file;
-	}
-	//TODO: ino <- Get inode
 	ino = ino_by_name(filename);
 	if (!ino) {
 		ret = -ENOMEM;
 		goto clean_up;
 	}
-	curr = get_inodes(table, t);
-	//Easy case, tag doesn't exist;
-	if (!curr)
-		goto clean_up;
-	//TODO: tag_ids <- Get tag ids from block
-	tag_ids = get_tagids(ino, &num_tags);
-	if (num_tags > 1) {
-		
-		for(i = 0; i < num_tags; i++)
-			if (strcmp(get_tag(table, tag_ids[i]), t) == 0) {
-				t_id = tag_ids[i];
-				break;
-			}
-			
-		curr = get_inodes(table, get_tag(table, tag_ids[0]));
-		for(i = 1; i < num_tags; i++) {
-			struct table_element *prev;
-			struct table_element *temp;
-			if(tag_ids[i] == t_id) 
-				continue;
-			prev = curr;
-			temp = get_inodes(table, get_tag(table, tag_ids[i]));
-			curr = set_intersect(prev, temp);
-			if (i > 1)
-				delete_element(prev);
-			if (!curr) {
-				ret = -ENOMEM;
-				goto clean_up;
-			}
-		}
-		entries = set_to_array(curr);
-		conflict = 0;
-		for(i = 0; i < element_size(curr); i++)
-			if (entries[i]->count == num_tags - 1 && strncmp(name, entries[i]->filename, MAX_FILENAME_LEN) == 0) {
-				printk("Removing tag introduces a conflict\n");
-				conflict = 1;
-				break;
-			}
-		if (num_tags > 2)
-			delete_element(curr);
-			
-		if (conflict) {
-			ret = -EINVAL;
+
+	for(i = 0; i < size; i++) {
+		t = getname(tag[i]);
+		if (IS_ERR(t)) {
+			ret = PTR_ERR(t);
 			goto clean_up;
 		}
+		rm_single_tag(ino, t);
+		if(ret)
+			goto clean_up;
+		putname(t);
 	}
-	remove_tagid(ino, get_tagid(table, t));
-	if (num_tags == 1)
-		deallocate_block(ino);
-	table_remove(table, t, ino);
-	//TODO: remove tags from inode, possibly deallocating the block
+
 clean_up:
-	putname(t);
-clean_file:
 	putname(file);
 end:
 	return ret;
@@ -612,11 +572,10 @@ end2:
 	return error;
 }
 
-int distag(unsigned long ino, char __user *buf, unsigned long size, unsigned long tag_offset) {
-	char tag_list[MAX_TAG_LEN*7];
+int distag(unsigned long ino, char __user **buf, unsigned long size, unsigned long tag_offset) {
 	const char *tag;
 	int ret = 0;
-	int i, len, num_tags, offset;
+	int i, num_tags, offset;
 	int *tag_ids = NULL;
 	printk("distag system call\n");
 
@@ -628,21 +587,14 @@ int distag(unsigned long ino, char __user *buf, unsigned long size, unsigned lon
 	}
 	printk("num_tags: %d tag_offset: %lu\n", num_tags, tag_offset);
 	offset = 0;
-	for(i = tag_offset; i < num_tags; i++) {
+	for(i = tag_offset; i < num_tags && i < size; i++) {
 		tag = get_tag(table, tag_ids[i]);
 		printk("tag: %s\n", tag);
-		len = strlen(tag);
-		if(offset + len + 2 > MAX_TAG_LEN*7 || offset + len + 2 > size)
-			break;
-		strncpy(&tag_list[offset], tag, MAX_TAG_LEN);
-		offset += len+2;
-		if(i != num_tags - 1)
-			tag_list[offset-2] = ',';
-			tag_list[offset-1] = ' ';
+		if(copy_to_user(buf[i], tag, MAX_TAG_LEN))
+			ret = -EFAULT;
 	}
+	ret = num_tags;
 	
-	if(copy_to_user(buf, tag_list, size))
-		ret = -EFAULT;
 fail_file:
 	return ret;
 }
