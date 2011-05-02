@@ -1400,10 +1400,19 @@ static struct vfsmount *find_vfsmount(struct dentry *root) {
 static struct dentry *ext2_mount(struct file_system_type *fs_type,
 	int flags, const char *dev_name, void *data)
 {
-	printk("@ext2_mount\n");
+	//printk("@ext2_mount\n");
 	
 	struct dentry *root = mount_bdev(fs_type, flags, dev_name, data, ext2_fill_super);
-	tagfs_vfsmount = find_vfsmount(root);
+	struct file_system_type *file_system = get_fs_type("tagfs");
+        struct list_head *list = file_system->fs_supers.next;
+        struct super_block *super_block = list_entry(list, struct super_block, s_instances);
+        //put_filesystem(file_system);
+	module_put(file_system->owner);
+	tagfs_vfsmount = find_vfsmount(super_block->s_root);
+	tagfs_root = super_block->s_root;
+	//printk("type=%s\n", super_block->s_type->name);
+	//printk("type=%s\n", tagfs_vfsmount->mnt_root->d_sb->s_type->name);
+	//printk("type=%s\n", tagfs_vfsmount->mnt_sb->s_type->name);
 	//init_tagfs(find_vfsmount(root));
 	return root;
 }

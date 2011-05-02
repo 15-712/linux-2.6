@@ -40,6 +40,8 @@
 
 struct vfsmount *tagfs_vfsmount;
 EXPORT_SYMBOL(tagfs_vfsmount);
+struct dentry *tagfs_root;
+EXPORT_SYMBOL(tagfs_root);
 //void init_tagfs(struct vfsmount *vfsmount) {
 //	tagfs_vfsmount = vfsmount;
 //}
@@ -1231,7 +1233,7 @@ static struct dentry *d_alloc_and_lookuptag(struct dentry *parent, struct qstr *
 		inode = super_block->s_root->d_inode;
         }
 */
-	printk("fs=%s\n", parent->d_sb->s_type->name);
+	//printk("fs=%s\n", parent->d_sb->s_type->name);
         inode = parent->d_inode;
 
 	//printk(KERN_ALERT "inode=%p\n", inode);
@@ -1409,7 +1411,7 @@ fail:
 
 static int do_lookuptag(struct nameidata *nd, struct qstr *name, unsigned long ino, struct path *path)
 {
-	//printk("@do_lookuptag: ino=%lu\n", ino);
+	printk("@do_lookuptag: ino=%lu\n", ino);
         struct vfsmount *mnt = nd->path.mnt;
         struct dentry *dentry, *parent = nd->path.dentry;
         //struct inode *dir;
@@ -2807,7 +2809,7 @@ static struct vfsmount *find_vfsmount(struct dentry *root) {
 
 static int open_namei(unsigned long ino, unsigned int flags, struct nameidata *nd)
 {
-	//printk(KERN_ALERT "@open_namei: ino=%lu\n", ino);
+	printk(KERN_ALERT "@open_namei: ino=%lu\n", ino);
         int retval = 0;
 
         //
@@ -2835,12 +2837,12 @@ static int open_namei(unsigned long ino, unsigned int flags, struct nameidata *n
         nd->root.mnt = NULL;
         nd->file = NULL;
 
-	struct file_system_type *file_system = get_fs_type("tagfs");
-	struct list_head *list = file_system->fs_supers.next;
-	struct super_block *super_block = list_entry(list, struct super_block, s_instances);
+	//struct file_system_type *file_system = get_fs_type("tagfs");
+	//struct list_head *list = file_system->fs_supers.next;
+	//struct super_block *super_block = list_entry(list, struct super_block, s_instances);
 	//printk(KERN_EMERG "super_block device=%s\n", super_block->s_id);
 	//printk(KERN_EMERG "root=%s\n", super_block->s_root->d_iname);
-	put_filesystem(file_system);
+	//put_filesystem(file_system);
 
 	//if (super_block->s_root != NULL) {
 		//printk(KERN_EMERG "start find\n");
@@ -2864,12 +2866,16 @@ static int open_namei(unsigned long ino, unsigned int flags, struct nameidata *n
 		// uses the following two lines of code if you would like kernel to hang (dmesg could not work)
 		nd->root.mnt = /*find_vfsmount(super_block->s_root);*/tagfs_vfsmount;
 		mntget(nd->root.mnt);
-		nd->root.dentry = super_block->s_root; /*tagfs_vfsmount->mnt_root;*/
+		nd->root.dentry = tagfs_root; /*super_block->s_root; */ /*tagfs_vfsmount->mnt_root;*/
+/*
 		if (super_block->s_root != tagfs_vfsmount->mnt_root) {
 			printk("not equal!!!!!\n");
 			printk("d_iname=%s\n", super_block->s_root->d_iname);
 			printk("d_ianme=%s\n", tagfs_vfsmount->mnt_root->d_iname);
+			printk("type=%s\n", super_block->s_type->name);
+			printk("type=%s\n", tagfs_vfsmount->mnt_root->d_sb->s_type->name);
 		}
+*/
 		nd->path = nd->root;
                 nd->seq = __read_seqcount_begin(&nd->path.dentry->d_seq);
         } while (read_seqcount_retry(&fs->seq, seq));
@@ -2961,7 +2967,7 @@ static int open_namei(unsigned long ino, unsigned int flags, struct nameidata *n
 
 struct file *do_filp_opentag(unsigned long ino, int open_flag, int acc_mode)
 {
-	//printk("@do_filp_opentag: ino=%lu\n", ino);
+	printk("@do_filp_opentag: ino=%lu\n", ino);
         struct file *filp;
         struct nameidata nd;
         int error;
