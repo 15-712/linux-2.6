@@ -178,7 +178,7 @@ int add_single_tag(unsigned long ino, const char *tag, char *name) {
 	struct inode_entry *ent;
 	int len, ret, i, j, num_tags;
 	int *tag_ids = NULL;
-	printk("add_single_tag '%s' to inode %lu\n", tag, ino);	
+	//printk("add_single_tag '%s' to inode %lu\n", tag, ino);	
 	len = strlen(tag);
 	//printk("checking for invalid characters\n");
 	for (i = 0; i < len; i++) {
@@ -194,17 +194,17 @@ int add_single_tag(unsigned long ino, const char *tag, char *name) {
 	curr = get_inodes(table, tag);
 	//Easy case
 	if (!curr) {
-		printk("creating new tag\n");
+		//printk("creating new tag\n");
 		/* TODO: Insert new tag into inode 
 		 *       if first tag, need to allocate block
 		 *       if block allocation fails, return failure condition
 		 */
 		if (num_tags) {
-			printk("looking up inode_entry\n");
+			//printk("looking up inode_entry\n");
 			e = get_inodes(table, get_tag(table, tag_ids[0]));
 			ent = find_entry(e, ino);
 		} else {
-			printk("creating inode_entry\n");
+			//printk("creating inode_entry\n");
 			ent = kmalloc(sizeof(struct inode_entry), GFP_KERNEL);
 			if (!ent) {
 				//TODO: Clean up
@@ -214,7 +214,7 @@ int add_single_tag(unsigned long ino, const char *tag, char *name) {
 			strncpy(ent->filename, name, MAX_FILENAME_LEN);
 			ent->count = 0;
 		}
-		printk("Inserting tag into table\n");
+		//printk("Inserting tag into table\n");
 		ret = table_insert(table, tag, ent);
 		if (ret) {
 			/*TODO: Clean up, may not be memory error, need 
@@ -226,7 +226,7 @@ int add_single_tag(unsigned long ino, const char *tag, char *name) {
 			table_remove(table, tag, ino);
 			return -ENOMEM;
 		}
-		printk("Adding tag id\n");
+		//printk("Adding tag id\n");
 		add_tagid(ino, get_tagid(table, tag));
 		return 0;
 	}
@@ -269,7 +269,7 @@ int addtag(const char __user *filename, const char __user **tag, unsigned int si
 	unsigned long ino = 0;
 	int i, j, ret = 0, num_tags = 0, len, duplicate = 0;
 
-	printk("addtag system call\n");
+	//printk("addtag system call\n");
 	file = getname(filename);
 	if (IS_ERR(file)) {
 		ret = PTR_ERR(file);
@@ -292,7 +292,6 @@ int addtag(const char __user *filename, const char __user **tag, unsigned int si
 	name = file + i + 1;
 
 	ino = ino_by_name(filename);
-	printk("inode for addtag: %lu\n", ino);
 	if(ino < 0) {
 		printk("Invalid inode for addtag\n");
 		ret = ino;
