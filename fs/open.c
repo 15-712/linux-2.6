@@ -37,7 +37,7 @@ int null_opentag(const char __user *tagexp, int flags) {
 	return -ENOSYS;
 }
 
-int null_addtag(const char __user *a, const char __user *b) {
+int null_addtag(const char __user *a, const char __user **b, unsigned int c) {
 	return -ENOSYS;
 }
 int null_rmtag(const char __user *a, const char __user *b) {
@@ -60,7 +60,7 @@ int null_distag(unsigned long a, char __user *b, unsigned long c, unsigned long 
 	return -ENOSYS;
 }
 
-int (*addtag_ptr)(const char __user *, const char __user *) = null_addtag;
+int (*addtag_ptr)(const char __user *, const char __user **, unsigned int) = null_addtag;
 int (*rmtag_ptr)(const char __user *, const char __user *) = null_rmtag;
 int (*lstag_ptr)(const char __user *, void __user *, unsigned long, int) = null_lstag;
 int (*chtag_ptr)(const char __user *) = null_chtag;
@@ -81,8 +81,8 @@ EXPORT_SYMBOL(distag_ptr);
 SYSCALL_DEFINE2(opentag, const char __user *, tagexp, int, flags) {
 	return opentag_ptr(tagexp, flags);
 }
-SYSCALL_DEFINE2(addtag, const char __user *, name, const char __user *, tag) {
-	return addtag_ptr(name, tag);
+SYSCALL_DEFINE3(addtag, const char __user *, name, const char __user **, tag, unsigned int, size) {
+	return addtag_ptr(name, tag, size);
 }
 SYSCALL_DEFINE2(rmtag, const char __user *, name, const char __user *, tag) {
 	return rmtag_ptr(name, tag);

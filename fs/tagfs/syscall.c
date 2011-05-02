@@ -26,7 +26,7 @@ struct userspace_inode_entry {
 };
 
 int (*prev_opentag)(const char __user *, int);
-int (*prev_addtag)(const char __user *, const char __user *);
+int (*prev_addtag)(const char __user *, const char __user **, unsigned int);
 int (*prev_rmtag)(const char __user *, const char __user *);
 int (*prev_chtag)(const char __user *);
 int (*prev_mvtag)(const char __user *, const char __user *);
@@ -153,38 +153,117 @@ int opentag(const char __user *tagexp, int flags) {
         return ret;
 }
 
-int addtag(const char __user *filename, const char __user *tag) {
+int add_single_tag(unsigned long ino, const char *tag, char *name) {
+	struct table_element *curr, *check, *e;
+	struct inode_entry *ent;
+	int len, ret, i, j, num_tags;
+	int *tag_ids = NULL;
+	printk("add_single_tag '%s' to inode %lu\n", tag, ino);	
+	len = strlen(tag);
+	//printk("checking for invalid characters\n");
+	for (i = 0; i < len; i++) {
+		for (j = 0; j < sizeof(inv) / sizeof(char); j++) {
+			if (tag[i] == inv[j]) {
+				printk("Invalid tag character: %c\n", inv[j]);
+				return -EINVAL;
+			}
+		}
+	}
+
+
+	tag_ids = get_tagids(ino, &num_tags);
+	//TODO: tag_ids <- Get tags from inode
+	curr = get_inodes(table, tag);
+	//Easy case
+	if (!curr) {
+		printk("creating new tag\n");
+		/* TODO: Insert new tag into inode 
+		 *       if first tag, need to allocate block
+		 *       if block allocation fails, return failure condition
+		 */
+		if (num_tags) {
+			printk("looking up inode_entry\n");
+			e = get_inodes(table, get_tag(table, tag_ids[0]));
+			ent = find_entry(e, ino);
+		} else {
+			printk("creating inode_entry\n");
+			ent = kmalloc(sizeof(struct inode_entry), GFP_KERNEL);
+			if (!ent) {
+				//TODO: Clean up
+				return -ENOMEM;
+			}
+			ent->ino = ino;
+			strncpy(ent->filename, name, MAX_FILENAME_LEN);
+			ent->count = 0;
+		}
+		printk("Inserting tag into table\n");
+		ret = table_insert(table, tag, ent);
+		if (ret) {
+			/*TODO: Clean up, may not be memory error, need 
+			  to check return value*/
+			return -ENOMEM;
+		}
+		//TODO: Make persistent
+		if (num_tags < 1 && allocate_block(ino)) {
+			table_remove(table, tag, ino);
+			return -ENOMEM;
+		}
+		printk("Adding tag id\n");
+		add_tagid(ino, get_tagid(table, tag));
+		return 0;
+	}
+
+	for (i = 0; i < num_tags; i++) {
+		if (strncmp(tag, get_tag(table, tag_ids[i]), MAX_TAG_LEN) == 0) {
+			printk("File already has tag %s.\n", tag);
+		}
+	}
+	check = get_inodes(table, get_tag(table, tag_ids[0]));
+	/* TODO: Insert new tag into inode 
+	 *       if first tag, need to allocate block
+	 *       if block allocationg fails, return failure condition
+	 */
+	if (!check) {
+		ent = kmalloc(sizeof(struct inode_entry), GFP_KERNEL);
+		if (!ent) {
+			//TODO: Clean up
+			return -ENOMEM;
+		}
+		ent->ino = ino;
+		strncpy(ent->filename, name, MAX_FILENAME_LEN);
+		ent->count = 0;
+	} else {
+		ent = find_entry(check, ino);
+	}
+	ret = table_insert(table, tag, ent);
+	if (ret) {
+		/*TODO: Clean up, may not be memory error, need 
+		  to check return value*/
+		return -ENOMEM;
+	}
+	//TODO: make persistent
+	if (num_tags < 1 && allocate_block(ino)) {
+		table_remove(table, tag, ino);
+		return -ENOMEM;
+	}
+	add_tagid(ino, get_tagid(table, tag));
+	return 0;
+}
+
+int addtag(const char __user *filename, const char __user **tag, unsigned int size) {
 	char *file, *t, *name;
 	int *tag_ids = NULL;
-	struct table_element *curr, *check;
-	struct inode_entry *ent;
-	struct inode_entry **entries;
 	unsigned long ino = 0;
-	int i, ret = 0, num_tags = 0, conflict, min, len;
+	int i, j, ret = 0, num_tags = 0, len;
 
-	//printk("addtag system call\n");
+	printk("addtag system call\n");
 	file = getname(filename);
 	if (IS_ERR(file)) {
 		ret = PTR_ERR(file);
 		goto fail_file;
 	}
-	t = getname(tag);
-	if (IS_ERR(t)) {
-		ret = PTR_ERR(t);
-		goto fail_tag;
-	}
-	len = strlen(t);
-	//printk("checking for invalid characters\n");
-	for (i = 0; i < len; i++) {
-		int j;
-		for (j = 0; j < sizeof(inv) / sizeof(char); j++) {
-			if (t[i] == inv[j]) {
-				printk("Invalid tag character: %c\n", inv[j]);
-				ret = -EINVAL;
-				goto fail_tag;
-			}
-		}
-	}
+
+
 	len = strlen(file);
 	i = len - 1;
 	//printk("making sure file is not a directory\n");
@@ -199,143 +278,62 @@ int addtag(const char __user *filename, const char __user *tag) {
 		goto fail;
 	}
 	name = file + i + 1;
+
 	ino = ino_by_name(filename);
-	//TODO: tag_ids <- Get tags from inode
+	if(ino < 0) {
+		printk("Invalid inode for addtag\n");
+		ret = ino;
+		goto fail;
+	}
+
 	tag_ids = get_tagids(ino, &num_tags);
-	if (num_tags >= MAX_NUM_TAGS) {
+
+	/* Check size */
+	if (num_tags > MAX_NUM_TAGS + size) {
 		printk("File has too many tags.\n");
 		ret = -EINVAL;
 		goto fail;
 	}
-	curr = get_inodes(table, t);
-	//Easy case
-	if (!curr) {
-		//printk("creating new tag\n");
-		/* TODO: Insert new tag into inode 
-		 *       if first tag, need to allocate block
-		 *       if block allocation fails, return failure condition
-		 */
-		if (num_tags) {
-			//printk("looking up inode_entry\n");
-			struct table_element *e = get_inodes(table, get_tag(table, tag_ids[0]));
-			ent = find_entry(e, ino);
-		} else {
-			//printk("creating inode_entry\n");
-			ent = kmalloc(sizeof(struct inode_entry), GFP_KERNEL);
-			if (!ent) {
-				//TODO: Clean up
-				ret = -ENOMEM;
-				goto fail;
+
+	
+	/* add tags */
+	for(i = 0; i < size; i++) {
+		t = getname(tag[i]);
+		if (IS_ERR(t)) {
+			ret = PTR_ERR(t);
+			goto fail_tag;
+		}
+		for (j = 0; j < num_tags; j++) {
+			if (strncmp(t, get_tag(table, tag_ids[i]), MAX_TAG_LEN) == 0) {
+				printk("File already has tag %s.\n", t);
 			}
-			ent->ino = ino;
-			strncpy(ent->filename, name, MAX_FILENAME_LEN);
-			ent->count = 0;
 		}
-		//printk("Inserting tag into table\n");
-		ret = table_insert(table, t, ent);
-		if (ret) {
-			/*TODO: Clean up, may not be memory error, need 
-			  to check return value*/
-			ret = -ENOMEM;
-			goto fail;
+		ret = add_single_tag(ino, t, name);
+		if(ret) {
+			putname(t);
+			goto fail_tag;
 		}
-		//TODO: Make persistent
-		if (num_tags < 1 && allocate_block(ino)) {
-			table_remove(table, t, ino);
-			ret = -ENOMEM;
-			goto fail;
-		}
-		//printk("Adding tag id\n");
-		add_tagid(ino, get_tagid(table, t));
 		putname(t);
-		putname(file);
-		return 0;
 	}
-	for (i = 0; i < num_tags; i++) {
-		if (strncmp(t, get_tag(table, tag_ids[i]), MAX_TAG_LEN) == 0) {
-			printk("File already has that tag.\n");
-			ret = -EINVAL;
-			goto fail;
-		}
-	}
-	min = 0;
-	check = NULL;
-	for (i = 0; i < num_tags; i++) {
-		struct table_element *prev = curr;
-		struct table_element *temp = get_inodes(table, get_tag(table, tag_ids[i]));
-		curr = set_intersect(prev, temp);
-		if (i > 0)
-			delete_element(prev);
-		if (!curr) {
-			//TODO: Clean up
-			ret = -ENOMEM;
-			goto fail;
-		}
-		if (!check || element_size(temp) < min) {
-			check = temp;
-			min = element_size(temp);
-		}
-	}
-	entries = set_to_array(curr);
-	conflict = 0;
-	for(i = 0; i < element_size(curr); i++) {
-		if (entries[i]->count == num_tags + 1 && strncmp(name, entries[i]->filename, MAX_FILENAME_LEN) == 0) {
-			printk("Conflict with file '%s', tag '%s'\n", name, t);
-			conflict = 1;
-			break;
-		}
-	}
-	if (num_tags > 0)
-		delete_element(curr);
-	if (conflict) {
-		//TODO: Clean up
-		printk("Conflict.\n");
-		ret = -EINVAL;
-		goto fail;
-	}
-	/* TODO: Insert new tag into inode 
-	 *       if first tag, need to allocate block
-	 *       if block allocationg fails, return failure condition
-	 */
-	if (!check) {
-		ent = kmalloc(sizeof(struct inode_entry), GFP_KERNEL);
-		if (!ent) {
-			//TODO: Clean up
-			ret = -ENOMEM;
-			goto fail;
-		}
-		ent->ino = ino;
-		strncpy(ent->filename, name, MAX_FILENAME_LEN);
-		ent->count = 0;
-	} else {
-		ent = find_entry(check, ino);
-	}
-	ret = table_insert(table, t, ent);
-	if (ret) {
-		ret = -ENOMEM;
-		/*TODO: Clean up, may not be memory error, need 
-		  to check return value*/
-		goto fail;
-	}
-	//TODO: make persistent
-	if (num_tags < 1 && allocate_block(ino)) {
-		table_remove(table, t, ino);
-		ret = -ENOMEM;
-		goto fail;
-	}
-	add_tagid(ino, get_tagid(table, t));
-	putname(t);
+
 	putname(file);
 	return 0;
 
 	//printk("Finished addtag\n");
-fail:
-	//TODO: clean up
-	putname(t);
 fail_tag:
+	/* undo added tags */
+	for(j = i-1; i >= 0; i++) {
+		rmtag(filename, tag[i]);
+	}
+
+fail:
 	putname(file);
 fail_file:
 	return ret;
+}
+
+int rm_single_tag(unsigned long ino, const char *tag, int *tag_ids, char *name) {
+	/*curr = get_inodes(table, t);*/
 }
 
 int rmtag(const char __user *filename, const char __user *tag) {
@@ -520,7 +518,7 @@ int lstag(const char __user *expr, void __user *buf, unsigned long size, int off
 	unsigned int len;
 	int error;
 	
-	//printk("lstag system call\n");
+	printk("lstag system call\n");
 	error = -ENOMEM;
 	if (IS_ERR(kexpr)) {
 		error = PTR_ERR(kexpr);
@@ -548,7 +546,7 @@ int lstag(const char __user *expr, void __user *buf, unsigned long size, int off
 		strlcpy(full_expr, expr, MAX_TAGEX_LEN);
 	}
 
-	//printk("full_expr = '%s'\n", full_expr);
+	printk("full_expr = '%s'\n", full_expr);
 	/* Build tree */
 	error = -EINVAL;
 	tree = build_tree(full_expr);
@@ -565,7 +563,7 @@ int lstag(const char __user *expr, void __user *buf, unsigned long size, int off
 		goto end;
 	}
 	len = element_size(results);
-	//printk("Found %d results\n", len);
+	printk("Found %d results\n", len);
 	if(len == 0)
 		goto end;
 
@@ -586,6 +584,7 @@ end:
 end2:
 	if(full_expr)
 		kfree(full_expr);
+	printk("lstag returning %d\n", error);
 	return error;
 }
 
