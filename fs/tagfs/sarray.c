@@ -14,6 +14,7 @@
 #include <linux/string.h>
 
 static const unsigned int StartCapacity = 10;
+static int insert_end(struct table_element *, struct inode_entry *);
 
 struct table_element {
 	struct inode_entry **entries;
@@ -54,7 +55,7 @@ struct table_element *copy_element(struct table_element *input) {
 	if(!copy)
 		return NULL;
 	for(i = 0; i < input->count; i++) {
-		insert_entry(copy, input->entries[i]);
+		insert_end(copy, input->entries[i]);
 	}
 	return copy;
 }

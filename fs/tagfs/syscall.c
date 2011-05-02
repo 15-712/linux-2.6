@@ -14,7 +14,7 @@
 #include "block.h"
 
 char cwt[MAX_TAGEX_LEN+1];
-struct expr_tree *tree = NULL;
+//struct expr_tree *tree = NULL;
 struct hash_table *table;
 
 static char inv[] = {'.', '&', '|', '/'};
@@ -440,7 +440,7 @@ end:
 
 int chtag(const char __user *tagex) {
 	char *ktagex = getname(tagex);
-	struct expr_tree *new_tree;
+	//struct expr_tree *new_tree;
 	int len, ret = 0;
 	//printk("chtag system call\n");
 	if (IS_ERR(ktagex)) {
@@ -454,22 +454,22 @@ int chtag(const char __user *tagex) {
 	}
 	if (len == 0) {
 		cwt[0] = '\0';
-		free_tree(tree);
-		tree = NULL;
+		//free_tree(tree);
+		//tree = NULL;
 		goto clean_up;
 	}
 
-	if (!(new_tree = build_tree(tagex))) {
-		/* TODO: need some way to check if the expression
+	/*if (!(new_tree = build_tree(tagex))) {
+		TODO: need some way to check if the expression
 		 *       has an error or a memory error occurred
-		 */
+		
 		ret = -EINVAL;
 		goto clean_up;
-	}
+	}*/
 	strcpy(cwt, ktagex);
-	if (tree)
+	/*if (tree)
 		free_tree(tree);
-	tree = new_tree;
+	tree = new_tree;*/
 clean_up:
 	putname(ktagex);
 end:
@@ -565,7 +565,7 @@ int lstag(const char __user *expr, void __user *buf, unsigned long size, int off
 		goto end;
 	}
 	len = element_size(results);
-	//printk("Found %d results\n", len);
+	printk("Found %d results\n", len);
 	if(len == 0)
 		goto end;
 

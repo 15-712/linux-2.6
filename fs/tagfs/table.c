@@ -139,12 +139,17 @@ unsigned int create_new_tag(struct hash_table *table, const char *tag)
 struct tag_node *find_node(struct hash_table *table, const char *tag) 
 {
 	struct tag_node *node;
+	//printk("finding node with tag %s\n", tag);
 	if(!table)
 		return NULL;
 	node = table->table[hash_tag(tag)];
+	//printk("Head node address %p\n", node);
 	while(node != NULL && strncmp(node->tag, tag, MAX_TAG_LEN) != 0) {
 		node = node->next;
+		//printk("Node address %p\n", node);
 	}
+	/*if (node)
+		printk("Found node %p with tag %s\n", node, node->tag);*/
 	return node;
 }
 
@@ -211,7 +216,7 @@ int table_remove(struct hash_table *table, const char *tag, unsigned long inode_
 	struct tag_node *node;
 	node = find_node(table, tag);
 	if(node) {
-		printk("Removing inode %u from %s\n", inode_num, tag);
+		printk("Removing inode %lu from %s\n", inode_num, tag);
 		remove_entry(node->e, inode_num);
 		if(element_size(node->e) == 0) {
 			printk("No more files with this tag, deleting tag from table\n");
@@ -219,12 +224,12 @@ int table_remove(struct hash_table *table, const char *tag, unsigned long inode_
 			/* decrement tag count */
 			table->num_tags--;
 
-			/* remove tag from lookup table */
-			remove_tag(table, node->tag_id);
 
 			/* remove tag from hash table */
 			delete_element(node->e);
 			remove_node(table, tag);
+			/* remove tag from lookup table */
+			remove_tag(table, node->tag_id);
 		}
 
 	}
@@ -241,7 +246,7 @@ int table_insert(struct hash_table *table, const char *tag, struct inode_entry *
 	node = find_node(table, tag);
 	if(!node) {
 		/* Create empty table element */
-		node = kmalloc(sizeof(struct tag_node), GFP_KERNEL);
+		node = kcalloc(sizeof(struct tag_node), 1, GFP_KERNEL);
 		if(!node)
 			return NO_MEMORY;
 		node->next = NULL;
@@ -277,6 +282,7 @@ struct table_element * get_inodes(struct hash_table *table, const char* tag)
 	struct tag_node *n = find_node(table, tag);
 	if(!n)
 		return NULL;
+	//printk("Element contains %d inodes\n", element_size(n->e));
 	return n->e;
 }
 
