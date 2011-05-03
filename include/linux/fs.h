@@ -13,6 +13,8 @@
 
 extern struct vfsmount *tagfs_vfsmount;
 extern struct dentry *tagfs_root;
+#include <linux/dcache.h>
+extern struct dentry *d_alloc_and_lookuptag(struct dentry *parent, struct qstr *name, unsigned long ino);
 //void init_tagfs(struct vfsmount *vfsmount);
 
 /*

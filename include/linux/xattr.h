@@ -77,6 +77,7 @@ ssize_t generic_listxattr(struct dentry *dentry, char *buffer, size_t buffer_siz
 int generic_setxattr(struct dentry *dentry, const char *name, const void *value, size_t size, int flags);
 int generic_removexattr(struct dentry *dentry, const char *name);
 
+
 #endif  /*  __KERNEL__  */
 
 #endif	/* _LINUX_XATTR_H */

@@ -1216,7 +1216,7 @@ static struct dentry *d_alloc_and_lookup(struct dentry *parent,
 	return dentry;
 }
 
-static struct dentry *d_alloc_and_lookuptag(struct dentry *parent, struct qstr *name, unsigned long ino)
+struct dentry *d_alloc_and_lookuptag(struct dentry *parent, struct qstr *name, unsigned long ino)
 {
 	printk("@d_alloc_and_lookuptag\n");
 	//printk("ino=%lu\n", ino);
@@ -1292,6 +1292,7 @@ static struct dentry *d_alloc_and_lookuptag(struct dentry *parent, struct qstr *
 	//printk("ino=%lu\n", dentry->d_inode->i_ino);
         return dentry;
 }
+EXPORT_SYMBOL(d_alloc_and_lookuptag);
 
 /*
  *  It's more convoluted than I'd like it to be, but... it's still fairly
@@ -2783,7 +2784,7 @@ out_filp:
 	filp = ERR_PTR(error);
 	goto out;
 }
-
+/*
 #include <linux/mnt_namespace.h>
 static struct vfsmount *find_vfsmount(struct dentry *root) {
 	//struct dentry *root = dget(dentry->d_sb->s_root);
@@ -2802,11 +2803,9 @@ static struct vfsmount *find_vfsmount(struct dentry *root) {
 	}
 	//up_read(&namespace->sem);
 	dput(root);
-	/*if (mnt == NULL)
-		printk("@find_vfsmount: mnt == NULL\n");*/
 	return mnt;
 }
-
+*/
 static int open_namei(unsigned long ino, unsigned int flags, struct nameidata *nd)
 {
 	printk(KERN_ALERT "@open_namei: ino=%lu\n", ino);

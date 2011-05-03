@@ -242,6 +242,11 @@ vfs_removexattr(struct dentry *dentry, const char *name)
 }
 EXPORT_SYMBOL_GPL(vfs_removexattr);
 
+void remove_tagid(unsigned long ino, int id)
+{
+
+}
+EXPORT_SYMBOL(remove_tagid);
 
 /*
  * Extended attribute SET operations
