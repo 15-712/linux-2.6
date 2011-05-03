@@ -164,7 +164,7 @@ int add_tagid(unsigned long ino, int tag) {
 			if (curr->num_tags >= MAX_NUM_TAGS)
 				return -1;
 			curr->tag[curr->num_tags++] = tag;
-add_tagid2(ino, tag);
+//add_tagid2(ino, tag);
 			return 0;
 		}
 		curr = curr->next;
