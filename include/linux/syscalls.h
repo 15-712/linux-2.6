@@ -836,12 +836,12 @@ asmlinkage long sys_old_mmap(struct mmap_arg_struct __user *arg);
 /* TAGFS */
 
 asmlinkage long sys_opentag(const char __user *tagexp, int flags);
-asmlinkage long sys_addtag(const char __user *filename, const char __user *tag);
-asmlinkage long sys_rmtag(const char __user *filename, const char __user *tag);
+asmlinkage long sys_addtag(const char __user *filename, const char __user **tag, unsigned int size);
+asmlinkage long sys_rmtag(const char __user *filename, const char __user **tag, unsigned int size);
 asmlinkage long sys_chtag(const char __user * expr);
 asmlinkage long sys_mvtag(const char __user *tag1, const char __user *tag2);
 asmlinkage long sys_getcwt(char __user *buf, unsigned long size);
 asmlinkage long sys_lstag(const char __user *expr, void __user *buf, unsigned long size, int offset);
-asmlinkage long sys_distag(unsigned long ino, char __user *buf, unsigned long size, unsigned long tag_offset);
+asmlinkage long sys_distag(unsigned long ino, char __user **buf, unsigned long size, unsigned long tag_offset);
 
 #endif
