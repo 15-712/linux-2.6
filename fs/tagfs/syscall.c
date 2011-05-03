@@ -208,6 +208,7 @@ int add_single_tag(unsigned long ino, const char *tag, char *name) {
 			ent = kmalloc(sizeof(struct inode_entry), GFP_KERNEL);
 			if (!ent) {
 				//TODO: Clean up
+				printk("Couldn't allocate entry\n");
 				return -ENOMEM;
 			}
 			ent->ino = ino;
@@ -219,10 +220,12 @@ int add_single_tag(unsigned long ino, const char *tag, char *name) {
 		if (ret) {
 			/*TODO: Clean up, may not be memory error, need 
 			  to check return value*/
+			printk("Couldn't insert entry\n");
 			return -ENOMEM;
 		}
 		//TODO: Make persistent
 		if (num_tags < 1 && allocate_block(ino)) {
+			printk("Couldn't insert entry\n");
 			table_remove(table, tag, ino);
 			return -ENOMEM;
 		}
@@ -241,6 +244,7 @@ int add_single_tag(unsigned long ino, const char *tag, char *name) {
 		ent = kmalloc(sizeof(struct inode_entry), GFP_KERNEL);
 		if (!ent) {
 			//TODO: Clean up
+			printk("Couldn't allocate entry\n");
 			return -ENOMEM;
 		}
 		ent->ino = ino;
@@ -253,10 +257,12 @@ int add_single_tag(unsigned long ino, const char *tag, char *name) {
 	if (ret) {
 		/*TODO: Clean up, may not be memory error, need 
 		  to check return value*/
+		printk("Couldn't insert entry\n");
 		return -ENOMEM;
 	}
 	//TODO: make persistent
 	if (num_tags < 1 && allocate_block(ino)) {
+		printk("Couldn't insert entry\n");
 		table_remove(table, tag, ino);
 		return -ENOMEM;
 	}
@@ -293,7 +299,7 @@ int addtag(const char __user *filename, const char __user **tag, unsigned int si
 	name = file + i + 1;
 
 	ino = ino_by_name(filename);
-	if(ino < 0) {
+	if((long int)ino < 0) {
 		printk("Invalid inode for addtag\n");
 		ret = ino;
 		goto fail;
@@ -302,7 +308,7 @@ int addtag(const char __user *filename, const char __user **tag, unsigned int si
 	tag_ids = get_tagids(ino, &num_tags);
 
 	/* Check size */
-	if (num_tags > MAX_NUM_TAGS + size) {
+	if (num_tags + size > MAX_NUM_TAGS) {
 		printk("File has too many tags.\n");
 		ret = -EINVAL;
 		goto fail;
@@ -581,26 +587,24 @@ end2:
 int distag(unsigned long ino, char __user **buf, unsigned long size, unsigned long tag_offset) {
 	const char *tag;
 	int ret = 0;
-	int i, num_tags, offset;
+	int i, num_tags;
 	int *tag_ids = NULL;
 	//printk("distag system call\n");
 
-	printk("@distag ino: %lu\n", ino);
+	//printk("@distag ino: %lu\n", ino);
 	tag_ids = get_tagids(ino, &num_tags);
-	printk("@distag tag_ids: %p\n", tag_ids);
 	if(!tag_ids) {
 		ret = -ENOENT;
 		goto fail_file;
 	}
-	//printk("num_tags: %d tag_offset: %lu\n", num_tags, tag_offset);
-	offset = 0;
-	for(i = tag_offset; i < num_tags && i < size; i++) {
+	printk("num_tags: %d tag_offset: %lu\n", num_tags, tag_offset);
+	for(i = tag_offset; i < num_tags && i < tag_offset + size; i++) {
 		tag = get_tag(table, tag_ids[i]);
 		//printk("tag: %s\n", tag);
-		if(copy_to_user(buf[i], tag, MAX_TAG_LEN))
+		if(copy_to_user(buf[i-tag_offset], tag, MAX_TAG_LEN))
 			ret = -EFAULT;
 	}
-	ret = num_tags;
+	ret = max(i-(int)tag_offset, 0);
 	
 fail_file:
 	return ret;

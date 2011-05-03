@@ -273,9 +273,9 @@ int table_insert(struct hash_table *table, const char *tag, struct inode_entry *
 	}
 
 	//printk("Finished successfully\n");
-	return insert_entry(node->e, i);
+	e = insert_entry(node->e, i);
+	return e;
 }
-
 /* Returns the table_element structure of inodes associated with the specified tag.  */
 struct table_element * get_inodes(struct hash_table *table, const char* tag) 
 {
