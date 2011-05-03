@@ -230,8 +230,9 @@ int add_single_tag(unsigned long ino, const char *tag, char *name) {
 		add_tagid(ino, get_tagid(table, tag));
 		return 0;
 	}
-
-	check = get_inodes(table, get_tag(table, tag_ids[0]));
+	check = NULL;
+	if (num_tags > 0)
+		check = get_inodes(table, get_tag(table, tag_ids[0]));
 	/* TODO: Insert new tag into inode 
 	 *       if first tag, need to allocate block
 	 *       if block allocationg fails, return failure condition
