@@ -208,7 +208,7 @@ nolsm:
 	else
 		error = -EOPNOTSUPP;
 
-	if (error)
+	//if (error)
 		//printk("debug 4: error=%d\n", error);
 	return error;
 }
