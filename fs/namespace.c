@@ -1357,7 +1357,8 @@ static int do_umount(struct vfsmount *mnt, int flags)
 
 SYSCALL_DEFINE2(umount, char __user *, name, int, flags)
 {
-	printk("@sys_umount: num=%d\n", mnt_get_count(tagfs_vfsmount));
+	if (tagfs_vfsmount)
+		printk("@sys_umount: num=%d\n", mnt_get_count(tagfs_vfsmount));
 	struct path path;
 	int retval;
 	int lookup_flags = 0;
