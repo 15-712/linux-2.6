@@ -1,9 +1,12 @@
 #include <linux/slab.h>
 
 #include "block.h"
-//#define DISK_TAG
+#define DISK_TAG
 
-//#ifdef DISK_TAG
+#ifdef DISK_TAG
+#define add_tagid2 add_tagid
+#define get_tagids2 get_tagids
+#define remove_tagid2 remove_tagid
 
 #include <linux/dcache.h>
 #include <linux/fs.h>
@@ -48,7 +51,7 @@ static struct dentry *get_dentry(unsigned long ino) {
 }
 
 int remove_tagid2(unsigned long ino, int id) {
-	printk("@remove_tagid2: ino=%lu, id=%d\n", id);
+	//printk("@remove_tagid2: ino=%lu, id=%d\n", id);
 	struct dentry *dentry = get_dentry(ino);
 	if (!dentry)
 		return -1;
@@ -57,7 +60,7 @@ int remove_tagid2(unsigned long ino, int id) {
         char tagid[NAME_LEN];
         memset(tagid, '\0', NAME_LEN);
         snprintf(tagid, NAME_LEN, "user.%d", id);
-        printk("tagid=%s\n", tagid);
+        //printk("tagid=%s\n", tagid);
 
         int error = vfs_removexattr(dentry, tagid);
         if (error) {
@@ -68,7 +71,7 @@ int remove_tagid2(unsigned long ino, int id) {
 
 int *get_tagids2(unsigned long ino, int *num)
 {
-        printk("@get_tagids2: ino=%lu\n", ino);
+        //printk("@get_tagids2: ino=%lu\n", ino);
         struct dentry *dentry = get_dentry(ino);
         if (!dentry)
                 return NULL;
@@ -107,8 +110,11 @@ int *get_tagids2(unsigned long ino, int *num)
         return (int *)klist;
 }
 
+void deallocate_all() {
+}
+
 int remove_all_tagids2(unsigned long ino) {
-	printk("@remove_all_tagid2: ino=%lu\n", ino);
+	//printk("@remove_all_tagid2: ino=%lu\n", ino);
 
         struct dentry *dentry = get_dentry(ino);
         if (!dentry)
@@ -124,8 +130,8 @@ int remove_all_tagids2(unsigned long ino) {
                 printk("error=%d\n", error);
                 return -1;
         }
-        printk("expected size=%d\n", error);
-        int size, total_size, tag;
+        //printk("expected size=%d\n", error);
+        int size, total_size;
         const char *read = klist;
         int num = 0;
         for (size = total_size = strlen(read) + 1; total_size <= error; ) {
@@ -147,7 +153,7 @@ int remove_all_tagids2(unsigned long ino) {
 
 int add_tagid2(unsigned long ino, int id)
 {
-        printk("@add_tagid2: ino=%lu, id=%d\n", ino, id);
+        //printk("@add_tagid2: ino=%lu, id=%d\n", ino, id);
         struct dentry *dentry;
         dentry = get_dentry(ino);
         if (!dentry)
@@ -157,7 +163,7 @@ int add_tagid2(unsigned long ino, int id)
         char tagid[NAME_LEN];
         memset(tagid, '\0', NAME_LEN);
         snprintf(tagid, NAME_LEN, "user.%d", id);
-	printk("tagid=%s\n", tagid);
+	//printk("tagid=%s\n", tagid);
 
         int error = vfs_setxattr(dentry, tagid, "1", 1, 0);
 	if (error) {
@@ -166,15 +172,15 @@ int add_tagid2(unsigned long ino, int id)
         return error;
 }
 
-/*
+
 int allocate_block(unsigned long ino) {
 	return 0;
 }
 
 void deallocate_block(unsigned long ino) {
 }
-*/
-//#else
+
+#else
 struct block {
 	unsigned long ino;
 	int tag[MAX_NUM_TAGS];
@@ -234,7 +240,7 @@ remove_all_tagids2(ino);
 	return -1;
 }
 
-void remove_tagid(unsigned long ino, int tag) {
+int remove_tagid(unsigned long ino, int tag) {
 	struct block *curr = head;
 	while(curr) {
 		if (curr->ino == ino) {
@@ -251,6 +257,7 @@ void remove_tagid(unsigned long ino, int tag) {
 		}
 		curr = curr->next;
 	}
+	return 0;
 }
 
 void mv_block(unsigned long ino1, unsigned long ino2)
@@ -291,4 +298,4 @@ void deallocate_all() {
 		kfree(temp);
 	}
 }
-//#endif
+#endif
