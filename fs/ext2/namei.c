@@ -57,7 +57,7 @@ static inline int ext2_add_nondir(struct dentry *dentry, struct inode *inode)
 
 static struct dentry *ext2_lookup(struct inode * dir, struct dentry *dentry, struct nameidata *nd)
 {
-	printk("@ext2_lookup: fs/ext2\n");
+	//printk("@ext2_lookup: fs/ext2\n");
 	struct inode * inode;
 	ino_t ino;
 	

@@ -107,7 +107,7 @@ int *get_tagids2(unsigned long ino, int *num)
         return (int *)klist;
 }
 
-int remove_all_tagid2(unsigned long ino) {
+int remove_all_tagids2(unsigned long ino) {
 	printk("@remove_all_tagid2: ino=%lu\n", ino);
 
         struct dentry *dentry = get_dentry(ino);
@@ -226,7 +226,7 @@ for (i = 0; i < num; i++) {
 }
 kfree(list);
 //remove_tagid2(ino, 1);
-remove_all_tagid2(ino);
+remove_all_tagids2(ino);
 			return 0;
 		}
 		curr = curr->next;

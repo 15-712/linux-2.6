@@ -115,26 +115,26 @@ int
 vfs_setxattr(struct dentry *dentry, const char *name, const void *value,
 		size_t size, int flags)
 {
-	printk("@vfs_setxattr\n");
+	//printk("@vfs_setxattr\n");
 	struct inode *inode = dentry->d_inode;
 	int error;
 
 	error = xattr_permission(inode, name, MAY_WRITE);
 	if (error) {
-		printk("debug 1: error=%d\n", error);
+		//printk("debug 1: error=%d\n", error);
 		return error;
 	}
 
 	mutex_lock(&inode->i_mutex);
 	error = security_inode_setxattr(dentry, name, value, size, flags);
 	if (error) {
-		printk("debug 2: error=%d\n", error);
+		//printk("debug 2: error=%d\n", error);
 		goto out;
 	}
 
 	error = __vfs_setxattr_noperm(dentry, name, value, size, flags);
 	if (error) {
-		printk("debug 3: error=%d\n", error);
+		//printk("debug 3: error=%d\n", error);
 	}
 
 out:
@@ -173,19 +173,19 @@ EXPORT_SYMBOL_GPL(xattr_getsecurity);
 ssize_t
 vfs_getxattr(struct dentry *dentry, const char *name, void *value, size_t size)
 {
-	printk("@vfs_getxattr\n");
+	//printk("@vfs_getxattr\n");
 	struct inode *inode = dentry->d_inode;
 	int error;
 
 	error = xattr_permission(inode, name, MAY_READ);
 	if (error) {
-		printk("debug 1: error=%d\n", error);
+		//printk("debug 1: error=%d\n", error);
 		return error;
 	}
 
 	error = security_inode_getxattr(dentry, name);
 	if (error) {
-		printk("debug 2: error=%d\n", error);
+		//printk("debug 2: error=%d\n", error);
 		return error;
 	}
 
@@ -199,7 +199,7 @@ vfs_getxattr(struct dentry *dentry, const char *name, void *value, size_t size)
 		 */
 		if (ret == -EOPNOTSUPP)
 			goto nolsm;
-		printk("debug 3\n");
+		//printk("debug 3\n");
 		return ret;
 	}
 nolsm:
@@ -209,7 +209,7 @@ nolsm:
 		error = -EOPNOTSUPP;
 
 	if (error)
-		printk("debug 4: error=%d\n", error);
+		//printk("debug 4: error=%d\n", error);
 	return error;
 }
 EXPORT_SYMBOL_GPL(vfs_getxattr);
@@ -217,12 +217,12 @@ EXPORT_SYMBOL_GPL(vfs_getxattr);
 ssize_t
 vfs_listxattr(struct dentry *d, char *list, size_t size)
 {
-	printk("@vfs_listxattr\n");
+	//printk("@vfs_listxattr\n");
 	ssize_t error;
 
 	error = security_inode_listxattr(d);
 	if (error) {
-		printk("debug 1: error=%d\n", error);
+		//printk("debug 1: error=%d\n", error);
 		return error;
 	}
 	error = -EOPNOTSUPP;
@@ -691,14 +691,14 @@ generic_listxattr(struct dentry *dentry, char *buffer, size_t buffer_size)
 int
 generic_setxattr(struct dentry *dentry, const char *name, const void *value, size_t size, int flags)
 {
-	printk("@generic_setxattr\n");
+	//printk("@generic_setxattr\n");
 	const struct xattr_handler *handler;
 
 	if (size == 0)
 		value = "";  /* empty EA, do not remove */
 	handler = xattr_resolve_name(dentry->d_sb->s_xattr, &name);
 	if (!handler) {
-		printk("handler is NULL\n");
+		//printk("handler is NULL\n");
 		return -EOPNOTSUPP;
 	}
 	return handler->set(dentry, name, value, size, 0, handler->flags);
