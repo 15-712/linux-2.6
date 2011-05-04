@@ -889,7 +889,7 @@ EXPORT_SYMBOL(shrink_dcache_sb);
  */
 static void shrink_dcache_for_umount_subtree(struct dentry *dentry)
 {
-	//printk("@shrink_dcache_for_umount_subtree: d_count=%d\n", dentry->d_count);
+	printk("@shrink_dcache_for_umount_subtree: d_count=%d\n", dentry->d_count);
 	struct dentry *parent;
 	unsigned detached = 0;
 
@@ -901,7 +901,7 @@ static void shrink_dcache_for_umount_subtree(struct dentry *dentry)
 	__d_drop(dentry);
 	spin_unlock(&dentry->d_lock);
 
-	//struct dentry *root = dentry;
+	struct dentry *root = dentry;
 	//printk("debug 1: root d_count=%d, root d_iname=%s\n", root->d_count, root->d_iname);
 
 	for (;;) {

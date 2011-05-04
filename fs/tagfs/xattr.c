@@ -244,6 +244,7 @@ cleanup:
 static int
 ext2_xattr_list(struct dentry *dentry, char *buffer, size_t buffer_size)
 {
+	printk("@ext2_xattr_list\n");
 	struct inode *inode = dentry->d_inode;
 	struct buffer_head *bh = NULL;
 	struct ext2_xattr_entry *entry;
@@ -256,13 +257,17 @@ ext2_xattr_list(struct dentry *dentry, char *buffer, size_t buffer_size)
 
 	down_read(&EXT2_I(inode)->xattr_sem);
 	error = 0;
-	if (!EXT2_I(inode)->i_file_acl)
+	if (!EXT2_I(inode)->i_file_acl) {
+		printk("debug 1\n");
 		goto cleanup;
+	}
 	ea_idebug(inode, "reading block %d", EXT2_I(inode)->i_file_acl);
 	bh = sb_bread(inode->i_sb, EXT2_I(inode)->i_file_acl);
 	error = -EIO;
-	if (!bh)
+	if (!bh) {
+		printk("debug 2\n");
 		goto cleanup;
+	}
 	ea_bdebug(bh, "b_count=%d, refcount=%d",
 		atomic_read(&(bh->b_count)), le32_to_cpu(HDR(bh)->h_refcount));
 	end = bh->b_data + bh->b_size;
@@ -272,6 +277,7 @@ bad_block:	ext2_error(inode->i_sb, "ext2_xattr_list",
 			"inode %ld: bad block %d", inode->i_ino,
 			EXT2_I(inode)->i_file_acl);
 		error = -EIO;
+		printk("debug 3\n");
 		goto cleanup;
 	}
 
@@ -280,8 +286,10 @@ bad_block:	ext2_error(inode->i_sb, "ext2_xattr_list",
 	while (!IS_LAST_ENTRY(entry)) {
 		struct ext2_xattr_entry *next = EXT2_XATTR_NEXT(entry);
 
-		if ((char *)next >= end)
+		if ((char *)next >= end) {
+			printk("debug 4\n");
 			goto bad_block;
+		}
 		entry = next;
 	}
 	if (ext2_xattr_cache_insert(bh))
@@ -300,6 +308,7 @@ bad_block:	ext2_error(inode->i_sb, "ext2_xattr_list",
 						    handler->flags);
 			if (buffer) {
 				if (size > rest) {
+					printk("debug 5\n");
 					error = -ERANGE;
 					goto cleanup;
 				}
@@ -308,6 +317,7 @@ bad_block:	ext2_error(inode->i_sb, "ext2_xattr_list",
 			rest -= size;
 		}
 	}
+	//printk("buffer_size=%d, rest=%d\n", buffer_size, rest);
 	error = buffer_size - rest;  /* total size */
 
 cleanup:
@@ -360,6 +370,7 @@ int
 ext2_xattr_set(struct inode *inode, int name_index, const char *name,
 	       const void *value, size_t value_len, int flags)
 {
+	printk("@ext2_xattr_set: name=%s, flags=%d\n", name, flags);
 	struct super_block *sb = inode->i_sb;
 	struct buffer_head *bh = NULL;
 	struct ext2_xattr_header *header = NULL;

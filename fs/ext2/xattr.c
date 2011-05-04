@@ -360,6 +360,7 @@ int
 ext2_xattr_set(struct inode *inode, int name_index, const char *name,
 	       const void *value, size_t value_len, int flags)
 {
+	printk("@ext2_xattr_set: fs/ext2\n");
 	struct super_block *sb = inode->i_sb;
 	struct buffer_head *bh = NULL;
 	struct ext2_xattr_header *header = NULL;

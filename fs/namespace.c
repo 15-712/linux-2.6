@@ -1198,7 +1198,7 @@ EXPORT_SYMBOL(may_umount);
 
 void release_mounts(struct list_head *head)
 {
-	//printk("@release_mounts\n");
+	printk("@release_mounts\n");
 	struct vfsmount *mnt;
 	while (!list_empty(head)) {
 		mnt = list_first_entry(head, struct vfsmount, mnt_hash);
@@ -1256,7 +1256,7 @@ static void shrink_submounts(struct vfsmount *mnt, struct list_head *umounts);
 
 static int do_umount(struct vfsmount *mnt, int flags)
 {
-	//printk("@do_umount\n");
+	printk("@do_umount: count=%d\n", mnt_get_count(mnt));
 	struct super_block *sb = mnt->mnt_sb;
 	int retval;
 	LIST_HEAD(umount_list);
@@ -1357,7 +1357,7 @@ static int do_umount(struct vfsmount *mnt, int flags)
 
 SYSCALL_DEFINE2(umount, char __user *, name, int, flags)
 {
-	//printk("@sys_umount\n");
+	printk("@sys_umount: num=%d\n", mnt_get_count(tagfs_vfsmount));
 	struct path path;
 	int retval;
 	int lookup_flags = 0;

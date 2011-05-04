@@ -43,78 +43,130 @@ static struct dentry *get_dentry(unsigned long ino) {
                 if (IS_ERR(dentry))
                         return NULL;
         }
-	printk("@get_dentry: succeed\n");
+	//printk("@get_dentry: succeed\n");
         return dentry;
+}
+
+int remove_tagid2(unsigned long ino, int id) {
+	printk("@remove_tagid2: ino=%lu, id=%d\n", id);
+	struct dentry *dentry = get_dentry(ino);
+	if (!dentry)
+		return -1;
+	dput(dentry);
+
+        char tagid[NAME_LEN];
+        memset(tagid, '\0', NAME_LEN);
+        snprintf(tagid, NAME_LEN, "user.%d", id);
+        printk("tagid=%s\n", tagid);
+
+        int error = vfs_removexattr(dentry, tagid);
+        if (error) {
+                printk("error=%d\n", error);
+        }
+	return 0;
 }
 
 int *get_tagids2(unsigned long ino, int *num)
 {
-        printk("@get_tagids\n");
-	mntget(tagfs_vfsmount);
+        printk("@get_tagids2: ino=%lu\n", ino);
         struct dentry *dentry = get_dentry(ino);
         if (!dentry)
                 return NULL;
+	dput(dentry);
+
         char *klist = NULL;
         #define SIZE 100
         klist = kmalloc(SIZE, GFP_KERNEL);
         if (!klist)
                 return NULL;
         int error = vfs_listxattr(dentry, klist, SIZE);
-        if (error)
+        if (error < 0) {
+		printk("error=%d\n", error);
                 return NULL;
-        printk("klist=%s\n", klist);
-        //memcpy(list, klist, size);
+	}
+        //printk("expected size=%d\n", error);
+	int size, total_size, tag;
+	const char *read = klist;
+	int *write = (int *)klist;
+	*num = 0;
+	for (size = total_size = strlen(read) + 1; total_size <= error; ) {
+		tag = simple_strtoul(read + 5, NULL, 10);
+		//printk("tag=%d\n", tag);
+		write[*num] = tag;
+		(*num)++;
+		if (total_size == error)
+			break;
+		read += size;
+		size = strlen(read) + 1;
+		total_size += size;
+	}
+        //error = vfs_listxattr(dentry, NULL, 0);
+	//printk("list size=%d\n", error);
         //kfree(klist);
+	
         return (int *)klist;
+}
+
+int remove_all_tagid2(unsigned long ino) {
+	printk("@remove_all_tagid2: ino=%lu\n", ino);
+
+        struct dentry *dentry = get_dentry(ino);
+        if (!dentry)
+                return -1;
+        dput(dentry);
+
+        char *klist = NULL;
+        klist = kmalloc(SIZE, GFP_KERNEL);
+        if (!klist)
+                return -1;
+        int error = vfs_listxattr(dentry, klist, SIZE);
+        if (error < 0) {
+                printk("error=%d\n", error);
+                return -1;
+        }
+        printk("expected size=%d\n", error);
+        int size, total_size, tag;
+        const char *read = klist;
+        int num = 0;
+        for (size = total_size = strlen(read) + 1; total_size <= error; ) {
+		printk("remove tag=%s\n", read);
+		int error = vfs_removexattr(dentry, read);
+        	if (error) {
+                	printk("error=%d\n", error);
+		}
+                num++;
+                if (total_size == error)
+                        break;
+                read += size;
+                size = strlen(read) + 1;
+                total_size += size;
+        }
+        kfree(klist);
+	return 0;
 }
 
 int add_tagid2(unsigned long ino, int id)
 {
-        printk("@add_tagid\n");
+        printk("@add_tagid2: ino=%lu, id=%d\n", ino, id);
         struct dentry *dentry;
         dentry = get_dentry(ino);
         if (!dentry)
                 return -1;
+	dput(dentry);
 
         char tagid[NAME_LEN];
         memset(tagid, '\0', NAME_LEN);
-        snprintf(tagid, NAME_LEN, "%d", id);
+        snprintf(tagid, NAME_LEN, "user.%d", id);
+	printk("tagid=%s\n", tagid);
 
-        int error = vfs_setxattr(dentry, tagid, "", 0, 0);
-        printk("error=%d\n", error);
-
-	//int num = 0;
-	//int *ptr = get_tagids2(ino, &num);
-	//kfree(ptr);
+        int error = vfs_setxattr(dentry, tagid, "1", 1, 0);
+	if (error) {
+        	printk("error=%d\n", error);
+	}
         return error;
 }
-/*
-int *get_tagids2(unsigned long ino, int *num)
-{
-        printk("@get_tagids\n");
-        struct dentry *dentry = get_dentry(ino);
-        if (!dentry)
-                return NULL;
-        char *klist = NULL;
-	#define SIZE 100
-        klist = kmalloc(SIZE, GFP_KERNEL);
-        if (!klist)
-                return NULL;
-        int error = vfs_listxattr(dentry, klist, SIZE);
-	if (error)
-		return NULL;
-        printk("klist=%s\n", klist);
-        //memcpy(list, klist, size);
-        //kfree(klist);
-        return (int *)klist;
-}
-*/
 
 /*
-void remove_tagid(unsigned long ino, int id) {
-}
-
-
 int allocate_block(unsigned long ino) {
 	return 0;
 }
@@ -164,7 +216,17 @@ int add_tagid(unsigned long ino, int tag) {
 			if (curr->num_tags >= MAX_NUM_TAGS)
 				return -1;
 			curr->tag[curr->num_tags++] = tag;
-//add_tagid2(ino, tag);
+add_tagid2(ino, tag);
+int i, num = 0;
+int *list = NULL;
+list = get_tagids2(ino, &num);
+printk("#tag=%d\n", num);
+for (i = 0; i < num; i++) {
+	printk("tag=%d\n", list[i]);
+}
+kfree(list);
+//remove_tagid2(ino, 1);
+remove_all_tagid2(ino);
 			return 0;
 		}
 		curr = curr->next;

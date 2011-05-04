@@ -85,10 +85,12 @@ xattr_permission(struct inode *inode, const char *name, int mask)
 int __vfs_setxattr_noperm(struct dentry *dentry, const char *name,
 		const void *value, size_t size, int flags)
 {
+	//printk("@__vfs_setxattr_noperm: name=%s, flags=%d\n", name, flags);
 	struct inode *inode = dentry->d_inode;
 	int error = -EOPNOTSUPP;
 
 	if (inode->i_op->setxattr) {
+		//printk("i_op->setxattr\n");
 		error = inode->i_op->setxattr(dentry, name, value, size, flags);
 		if (!error) {
 			fsnotify_xattr(dentry);
@@ -97,13 +99,14 @@ int __vfs_setxattr_noperm(struct dentry *dentry, const char *name,
 		}
 	} else if (!strncmp(name, XATTR_SECURITY_PREFIX,
 				XATTR_SECURITY_PREFIX_LEN)) {
+		//printk("no i_op->setxattr\n");
 		const char *suffix = name + XATTR_SECURITY_PREFIX_LEN;
 		error = security_inode_setsecurity(inode, suffix, value,
 						   size, flags);
 		if (!error)
 			fsnotify_xattr(dentry);
 	}
-
+	//printk("retrun from __vfs_setxattr_noperm: error=%d\n", error);
 	return error;
 }
 
@@ -112,19 +115,27 @@ int
 vfs_setxattr(struct dentry *dentry, const char *name, const void *value,
 		size_t size, int flags)
 {
+	printk("@vfs_setxattr\n");
 	struct inode *inode = dentry->d_inode;
 	int error;
 
 	error = xattr_permission(inode, name, MAY_WRITE);
-	if (error)
+	if (error) {
+		printk("debug 1: error=%d\n", error);
 		return error;
+	}
 
 	mutex_lock(&inode->i_mutex);
 	error = security_inode_setxattr(dentry, name, value, size, flags);
-	if (error)
+	if (error) {
+		printk("debug 2: error=%d\n", error);
 		goto out;
+	}
 
 	error = __vfs_setxattr_noperm(dentry, name, value, size, flags);
+	if (error) {
+		printk("debug 3: error=%d\n", error);
+	}
 
 out:
 	mutex_unlock(&inode->i_mutex);
@@ -162,16 +173,21 @@ EXPORT_SYMBOL_GPL(xattr_getsecurity);
 ssize_t
 vfs_getxattr(struct dentry *dentry, const char *name, void *value, size_t size)
 {
+	printk("@vfs_getxattr\n");
 	struct inode *inode = dentry->d_inode;
 	int error;
 
 	error = xattr_permission(inode, name, MAY_READ);
-	if (error)
+	if (error) {
+		printk("debug 1: error=%d\n", error);
 		return error;
+	}
 
 	error = security_inode_getxattr(dentry, name);
-	if (error)
+	if (error) {
+		printk("debug 2: error=%d\n", error);
 		return error;
+	}
 
 	if (!strncmp(name, XATTR_SECURITY_PREFIX,
 				XATTR_SECURITY_PREFIX_LEN)) {
@@ -183,6 +199,7 @@ vfs_getxattr(struct dentry *dentry, const char *name, void *value, size_t size)
 		 */
 		if (ret == -EOPNOTSUPP)
 			goto nolsm;
+		printk("debug 3\n");
 		return ret;
 	}
 nolsm:
@@ -191,6 +208,8 @@ nolsm:
 	else
 		error = -EOPNOTSUPP;
 
+	if (error)
+		printk("debug 4: error=%d\n", error);
 	return error;
 }
 EXPORT_SYMBOL_GPL(vfs_getxattr);
@@ -198,15 +217,20 @@ EXPORT_SYMBOL_GPL(vfs_getxattr);
 ssize_t
 vfs_listxattr(struct dentry *d, char *list, size_t size)
 {
+	printk("@vfs_listxattr\n");
 	ssize_t error;
 
 	error = security_inode_listxattr(d);
-	if (error)
+	if (error) {
+		printk("debug 1: error=%d\n", error);
 		return error;
+	}
 	error = -EOPNOTSUPP;
 	if (d->d_inode->i_op->listxattr) {
+		//printk("i_op->listxattr\n");
 		error = d->d_inode->i_op->listxattr(d, list, size);
 	} else {
+		//printk("no i_op->listxattr\n");
 		error = security_inode_listsecurity(d->d_inode, list, size);
 		if (size && error > size)
 			error = -ERANGE;
@@ -598,12 +622,15 @@ strcmp_prefix(const char *a, const char *a_prefix)
 static const struct xattr_handler *
 xattr_resolve_name(const struct xattr_handler **handlers, const char **name)
 {
+	//printk("@xattr_resolve_name: name=%s\n", *name);
 	const struct xattr_handler *handler;
 
 	if (!*name)
 		return NULL;
 
 	for_each_xattr_handler(handlers, handler) {
+		//if (handler)
+			//printk("handler->prefix=%s\n", handler->prefix);
 		const char *n = strcmp_prefix(*name, handler->prefix);
 		if (n) {
 			*name = n;
@@ -664,13 +691,16 @@ generic_listxattr(struct dentry *dentry, char *buffer, size_t buffer_size)
 int
 generic_setxattr(struct dentry *dentry, const char *name, const void *value, size_t size, int flags)
 {
+	printk("@generic_setxattr\n");
 	const struct xattr_handler *handler;
 
 	if (size == 0)
 		value = "";  /* empty EA, do not remove */
 	handler = xattr_resolve_name(dentry->d_sb->s_xattr, &name);
-	if (!handler)
+	if (!handler) {
+		printk("handler is NULL\n");
 		return -EOPNOTSUPP;
+	}
 	return handler->set(dentry, name, value, size, 0, handler->flags);
 }
 
