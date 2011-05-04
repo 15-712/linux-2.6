@@ -19,7 +19,7 @@ char cwt[MAX_TAGEX_LEN+1];
 //struct expr_tree *tree = NULL;
 struct hash_table *table;
 
-static char inv[] = {'.', '&', '|', '/'};
+static char inv[] = {'.', '&', '|', '/', ' '};
 
 struct userspace_inode_entry {
 	unsigned long ino;
@@ -230,7 +230,8 @@ int add_single_tag(unsigned long ino, const char *tag, char *name) {
 			return -ENOMEM;
 		}
 		//printk("Adding tag id\n");
-		add_tagid(ino, get_tagid(table, tag));
+		if(add_tagid(ino, get_tagid(table, tag)))
+			printk("add_tagid failed\n");
 		return 0;
 	}
 	check = NULL;
@@ -266,7 +267,8 @@ int add_single_tag(unsigned long ino, const char *tag, char *name) {
 		table_remove(table, tag, ino);
 		return -ENOMEM;
 	}
-	add_tagid(ino, get_tagid(table, tag));
+	if(add_tagid(ino, get_tagid(table, tag)))
+		printk("add_tagid failed\n");
 	return 0;
 }
 
@@ -589,15 +591,32 @@ int distag(unsigned long ino, char __user **buf, unsigned long size, unsigned lo
 	int ret = 0;
 	int i, num_tags;
 	int *tag_ids = NULL;
+	int count = 0;
 	//printk("distag system call\n");
 
-	//printk("@distag ino: %lu\n", ino);
+	//printk("@distag ino: %lu, offset: %lu\n", ino, tag_offset);
+
+	if(ino == 0) {
+		for(i = 0; ; i++) {	
+			tag = get_tag(table, i);
+			if(tag[0] != '\0') {
+				//printk("Found tag '%s' with id %d\n", tag, i);
+				if(count >= tag_offset && copy_to_user(buf[count-tag_offset], tag, MAX_TAG_LEN)) 
+					return -EFAULT;
+				count++;
+				if(count-(int)tag_offset >= (int)size || count >= get_num_tags(table)) {
+					break;
+				}
+			}
+		}
+		return max(count-(int)tag_offset, 0);
+	}
 	tag_ids = get_tagids(ino, &num_tags);
 	if(!tag_ids) {
 		ret = -ENOENT;
 		goto fail_file;
 	}
-	printk("num_tags: %d tag_offset: %lu\n", num_tags, tag_offset);
+	//printk("num_tags: %d tag_offset: %lu\n", num_tags, tag_offset);
 	for(i = tag_offset; i < num_tags && i < tag_offset + size; i++) {
 		tag = get_tag(table, tag_ids[i]);
 		//printk("tag: %s\n", tag);

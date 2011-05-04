@@ -85,6 +85,7 @@ static inline unsigned long hash_tag(const char *name)
 unsigned int remove_tag(struct hash_table *table, int index) {
 	struct free_list_entry *free_list;
 	struct free_list_entry *new_entry;
+	//printk("Removing tag index %d\n", index);
 	table->lookup_table->tag[index*MAX_TAG_LEN] = '\0';
 
 	free_list = table->lookup_table->free_list;
@@ -94,7 +95,7 @@ unsigned int remove_tag(struct hash_table *table, int index) {
 	}
 	new_entry->free_index = index;
 	new_entry->next = free_list;
-	free_list = new_entry;
+	table->lookup_table->free_list = new_entry;
 	/*if(!free_list) {
 		table->lookup_table->free_list = new_entry;
 	} else {
@@ -216,14 +217,13 @@ int table_remove(struct hash_table *table, const char *tag, unsigned long inode_
 	struct tag_node *node;
 	node = find_node(table, tag);
 	if(node) {
-		printk("Removing inode %lu from %s\n", inode_num, tag);
+		//printk("Removing inode %lu from %s\n", inode_num, tag);
 		remove_entry(node->e, inode_num);
 		if(element_size(node->e) == 0) {
 			printk("No more files with this tag, deleting tag from table\n");
 
 			/* decrement tag count */
 			table->num_tags--;
-
 
 			/* remove tag from hash table */
 			delete_element(node->e);
@@ -255,6 +255,7 @@ int table_insert(struct hash_table *table, const char *tag, struct inode_entry *
 			kfree(node);
 			return NO_MEMORY;
 		}
+		printk("Created new tag '%s' with id %d\n", tag, tag_id);
 		node->e = new_element();
 		if (!node->e) {
 	   		remove_tag(table, tag_id);	
@@ -391,6 +392,10 @@ void destroy_table(struct hash_table *table) {
 	}
 	kfree(table->lookup_table);
 	kfree(table);
+}
+
+unsigned int get_num_tags(struct hash_table * table) {
+	return table->num_tags;
 }
 
 const char *get_tag(struct hash_table *table, int id) {

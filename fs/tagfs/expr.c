@@ -285,14 +285,14 @@ cleanup:
 struct table_element* parse_tree(struct expr_tree *tree, struct hash_table *table) {
 	struct table_element* result;
 	if(tree->type == TAG) {
-		printk("Tree of type tag\n");
-		printk("Returning inodes for %s\n", tree->tag);
+		//printk("Tree of type tag\n");
+		//printk("Returning inodes for %s\n", tree->tag);
 		return copy_element(get_inodes(table, tree->tag));
 	} else if(tree->type == OPERATOR) {
-		printk("Tree of type operator\n");
+		//printk("Tree of type operator\n");
 		struct table_element *a =  parse_tree(tree->left, table);
 		struct table_element *b =  parse_tree(tree->right, table);
-		printk("Acquired childern nodes\n");
+		//printk("Acquired childern nodes\n");
 		if(tree->op == INTERSECTION) {
 			if(!a || !b) {
 				result = NULL;
