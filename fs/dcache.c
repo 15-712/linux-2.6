@@ -889,7 +889,7 @@ EXPORT_SYMBOL(shrink_dcache_sb);
  */
 static void shrink_dcache_for_umount_subtree(struct dentry *dentry)
 {
-	printk("@shrink_dcache_for_umount_subtree: d_count=%d\n", dentry->d_count);
+	//printk("@shrink_dcache_for_umount_subtree: d_count=%d\n", dentry->d_count);
 	struct dentry *parent;
 	unsigned detached = 0;
 

@@ -1218,7 +1218,7 @@ static struct dentry *d_alloc_and_lookup(struct dentry *parent,
 
 struct dentry *d_alloc_and_lookuptag(struct dentry *parent, struct qstr *name, unsigned long ino)
 {
-	printk("@d_alloc_and_lookuptag\n");
+	//printk("@d_alloc_and_lookuptag\n");
 	//printk("ino=%lu\n", ino);
         struct inode *inode = NULL;
         struct dentry *dentry = NULL;

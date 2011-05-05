@@ -1198,7 +1198,7 @@ EXPORT_SYMBOL(may_umount);
 
 void release_mounts(struct list_head *head)
 {
-	printk("@release_mounts\n");
+	//printk("@release_mounts\n");
 	struct vfsmount *mnt;
 	while (!list_empty(head)) {
 		mnt = list_first_entry(head, struct vfsmount, mnt_hash);
