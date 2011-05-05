@@ -1280,7 +1280,7 @@ struct dentry *d_alloc_and_lookuptag(struct dentry *parent, struct qstr *name, u
         	//printk("after2=%d\n", after2);
 
         	if (unlikely(old)) {
-			printk("unlikely!!!!!!!\n");
+			//printk("unlikely!!!!!!!\n");
                 	dput(dentry);
                 	dentry = old;
         	}
@@ -1412,7 +1412,7 @@ fail:
 
 static int do_lookuptag(struct nameidata *nd, struct qstr *name, unsigned long ino, struct path *path)
 {
-	printk("@do_lookuptag: ino=%lu\n", ino);
+	//printk("@do_lookuptag: ino=%lu\n", ino);
         struct vfsmount *mnt = nd->path.mnt;
         struct dentry *dentry, *parent = nd->path.dentry;
         //struct inode *dir;
@@ -2808,7 +2808,7 @@ static struct vfsmount *find_vfsmount(struct dentry *root) {
 */
 static int open_namei(unsigned long ino, unsigned int flags, struct nameidata *nd)
 {
-	printk(KERN_ALERT "@open_namei: ino=%lu\n", ino);
+	//printk(KERN_ALERT "@open_namei: ino=%lu\n", ino);
         int retval = 0;
 
         //
@@ -2966,7 +2966,7 @@ static int open_namei(unsigned long ino, unsigned int flags, struct nameidata *n
 
 struct file *do_filp_opentag(unsigned long ino, int open_flag, int acc_mode)
 {
-	printk("@do_filp_opentag: ino=%lu\n", ino);
+	//printk("@do_filp_opentag: ino=%lu\n", ino);
         struct file *filp;
         struct nameidata nd;
         int error;
