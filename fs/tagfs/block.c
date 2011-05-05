@@ -64,7 +64,7 @@ int remove_tagid2(unsigned long ino, int id) {
 
         int error = vfs_removexattr(dentry, tagid);
         if (error) {
-                printk("error=%d\n", error);
+                //printk("error=%d\n", error);
         }
 	return 0;
 }
@@ -78,13 +78,13 @@ int *get_tagids2(unsigned long ino, int *num)
 	dput(dentry);
 
         char *klist = NULL;
-        #define SIZE 100
+        #define SIZE 1000
         klist = kmalloc(SIZE, GFP_KERNEL);
         if (!klist)
                 return NULL;
         int error = vfs_listxattr(dentry, klist, SIZE);
         if (error < 0) {
-		printk("error=%d\n", error);
+		//printk("error=%d\n", error);
                 return NULL;
 	}
         //printk("expected size=%d\n", error);
@@ -127,7 +127,7 @@ int remove_all_tagids2(unsigned long ino) {
                 return -1;
         int error = vfs_listxattr(dentry, klist, SIZE);
         if (error < 0) {
-                printk("error=%d\n", error);
+                //printk("error=%d\n", error);
                 return -1;
         }
         //printk("expected size=%d\n", error);
@@ -135,10 +135,10 @@ int remove_all_tagids2(unsigned long ino) {
         const char *read = klist;
         int num = 0;
         for (size = total_size = strlen(read) + 1; total_size <= error; ) {
-		printk("remove tag=%s\n", read);
+		//printk("remove tag=%s\n", read);
 		int error = vfs_removexattr(dentry, read);
         	if (error) {
-                	printk("error=%d\n", error);
+                	//printk("error=%d\n", error);
 		}
                 num++;
                 if (total_size == error)
@@ -167,7 +167,7 @@ int add_tagid2(unsigned long ino, int id)
 
         int error = vfs_setxattr(dentry, tagid, "1", 1, 0);
 	if (error) {
-        	printk("error=%d\n", error);
+        	//printk("error=%d\n", error);
 	}
         return error;
 }

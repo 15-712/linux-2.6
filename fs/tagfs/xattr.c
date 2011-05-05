@@ -244,7 +244,7 @@ cleanup:
 static int
 ext2_xattr_list(struct dentry *dentry, char *buffer, size_t buffer_size)
 {
-	printk("@ext2_xattr_list\n");
+	//printk("@ext2_xattr_list\n");
 	struct inode *inode = dentry->d_inode;
 	struct buffer_head *bh = NULL;
 	struct ext2_xattr_entry *entry;
@@ -252,20 +252,20 @@ ext2_xattr_list(struct dentry *dentry, char *buffer, size_t buffer_size)
 	size_t rest = buffer_size;
 	int error;
 
-	ea_idebug(inode, "buffer=%p, buffer_size=%ld",
-		  buffer, (long)buffer_size);
+	/*ea_idebug(inode, "buffer=%p, buffer_size=%ld",
+		  buffer, (long)buffer_size);*/
 
 	down_read(&EXT2_I(inode)->xattr_sem);
 	error = 0;
 	if (!EXT2_I(inode)->i_file_acl) {
-		printk("debug 1\n");
+		//printk("debug 1\n");
 		goto cleanup;
 	}
 	ea_idebug(inode, "reading block %d", EXT2_I(inode)->i_file_acl);
 	bh = sb_bread(inode->i_sb, EXT2_I(inode)->i_file_acl);
 	error = -EIO;
 	if (!bh) {
-		printk("debug 2\n");
+		//printk("debug 2\n");
 		goto cleanup;
 	}
 	ea_bdebug(bh, "b_count=%d, refcount=%d",
@@ -287,7 +287,7 @@ bad_block:	ext2_error(inode->i_sb, "ext2_xattr_list",
 		struct ext2_xattr_entry *next = EXT2_XATTR_NEXT(entry);
 
 		if ((char *)next >= end) {
-			printk("debug 4\n");
+			//printk("debug 4\n");
 			goto bad_block;
 		}
 		entry = next;
@@ -308,7 +308,7 @@ bad_block:	ext2_error(inode->i_sb, "ext2_xattr_list",
 						    handler->flags);
 			if (buffer) {
 				if (size > rest) {
-					printk("debug 5\n");
+					//printk("debug 5\n");
 					error = -ERANGE;
 					goto cleanup;
 				}
@@ -370,7 +370,7 @@ int
 ext2_xattr_set(struct inode *inode, int name_index, const char *name,
 	       const void *value, size_t value_len, int flags)
 {
-	printk("@ext2_xattr_set: name=%s, flags=%d\n", name, flags);
+	//printk("@ext2_xattr_set: name=%s, flags=%d\n", name, flags);
 	struct super_block *sb = inode->i_sb;
 	struct buffer_head *bh = NULL;
 	struct ext2_xattr_header *header = NULL;

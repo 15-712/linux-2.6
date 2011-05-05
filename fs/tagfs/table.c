@@ -220,7 +220,7 @@ int table_remove(struct hash_table *table, const char *tag, unsigned long inode_
 		//printk("Removing inode %lu from %s\n", inode_num, tag);
 		remove_entry(node->e, inode_num);
 		if(element_size(node->e) == 0) {
-			printk("No more files with this tag, deleting tag from table\n");
+			//printk("No more files with this tag, deleting tag from table\n");
 
 			/* decrement tag count */
 			table->num_tags--;
@@ -255,7 +255,7 @@ int table_insert(struct hash_table *table, const char *tag, struct inode_entry *
 			kfree(node);
 			return NO_MEMORY;
 		}
-		printk("Created new tag '%s' with id %d\n", tag, tag_id);
+		//printk("Created new tag '%s' with id %d\n", tag, tag_id);
 		node->e = new_element();
 		if (!node->e) {
 	   		remove_tag(table, tag_id);	

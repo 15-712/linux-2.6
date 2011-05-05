@@ -64,7 +64,7 @@ static struct dentry *ext2_lookup(struct inode * dir, struct dentry *dentry, str
 		printk(KERN_ALERT "ino == 12!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
 */
 
-	printk("@ext2_lookup: fs/tagfs\n");
+	//printk("@ext2_lookup: fs/tagfs\n");
 	struct inode * inode;
 	ino_t ino;
 	
